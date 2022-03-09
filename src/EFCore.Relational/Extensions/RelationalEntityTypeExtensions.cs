@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 // ReSharper disable once CheckNamespace
@@ -62,7 +63,7 @@ public static class RelationalEntityTypeExtensions
 
         var ownership = entityType.FindOwnership();
         if (ownership != null
-            && ownership.IsUnique)
+            && (ownership.IsUnique || entityType.IsMappedToJson()))
         {
             return ownership.PrincipalEntityType.GetTableName();
         }
@@ -1019,12 +1020,20 @@ public static class RelationalEntityTypeExtensions
 
         foreach (var foreignKey in entityType.GetForeignKeys())
         {
+            var mappedToJson = entityType.IsMappedToJson();
             var principalEntityType = foreignKey.PrincipalEntityType;
+
+            //var pkPropertiesToMatch = primaryKey.GetMappedKeyProperties();
+
+            var pkPropertiesToMatch = mappedToJson
+                ? primaryKey.Properties.Take(foreignKey.Properties.Count).ToList().AsReadOnly()
+                : primaryKey.Properties;
+
             if (!foreignKey.PrincipalKey.IsPrimaryKey()
                 || principalEntityType == foreignKey.DeclaringEntityType
-                || !foreignKey.IsUnique
+                || (!foreignKey.IsUnique && !mappedToJson)
 #pragma warning disable EF1001 // Internal EF Core API usage.
-                || !PropertyListComparer.Instance.Equals(foreignKey.Properties, primaryKey.Properties))
+                || !PropertyListComparer.Instance.Equals(foreignKey.Properties, pkPropertiesToMatch))
 #pragma warning restore EF1001 // Internal EF Core API usage.
             {
                 continue;
@@ -1504,4 +1513,53 @@ public static class RelationalEntityTypeExtensions
         => Trigger.GetDeclaredTriggers(entityType).Cast<ITrigger>();
 
     #endregion Trigger
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static bool IsMappedToJson(this IConventionEntityType entityType)
+        => !string.IsNullOrEmpty(entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonColumnName)?.Value as string);
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static bool IsMappedToJson(this IReadOnlyEntityType entityType)
+        => !string.IsNullOrEmpty(entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonColumnName)?.Value as string);
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static string? MappedToJsonColumnName(this IConventionEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonColumnName)?.Value as string;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static string? MappedToJsonColumnName(this IReadOnlyEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonColumnName)?.Value as string;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static string? MappedToJsonColumnTypeName(this IReadOnlyEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonColumnTypeName)?.Value as string;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static IReadOnlyEntityType FindJsonAggregateRoot(this IReadOnlyEntityType entityType)
+    {
+        if (entityType.IsMappedToJson())
+        {
+            var currentEntity = entityType;
+            while (currentEntity.IsMappedToJson())
+            {
+                currentEntity = currentEntity.FindOwnership()!.PrincipalEntityType;
+            }
+
+            return currentEntity;
+        }
+
+        return entityType;
+    }
 }

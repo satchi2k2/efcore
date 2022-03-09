@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
@@ -18,7 +20,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 public class EntityProjectionExpression : Expression
 {
     private readonly IReadOnlyDictionary<IProperty, ColumnExpression> _propertyExpressionMap;
-    private readonly Dictionary<INavigation, EntityShaperExpression> _ownedNavigationMap = new();
+    private readonly Dictionary<INavigation, EntityShaperExpression> _ownedNavigationMap;
 
     /// <summary>
     ///     Creates a new instance of the <see cref="EntityProjectionExpression" /> class.
@@ -30,9 +32,23 @@ public class EntityProjectionExpression : Expression
         IEntityType entityType,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
         SqlExpression? discriminatorExpression = null)
+        : this(
+            entityType,
+            propertyExpressionMap,
+            new Dictionary<INavigation, EntityShaperExpression>(),
+            discriminatorExpression)
+    {
+    }
+
+    private EntityProjectionExpression(
+        IEntityType entityType,
+        IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
+        IReadOnlyDictionary<INavigation, EntityShaperExpression> jsonNavigationMap,
+        SqlExpression? discriminatorExpression = null)
     {
         EntityType = entityType;
         _propertyExpressionMap = propertyExpressionMap;
+        _ownedNavigationMap = new(jsonNavigationMap);
         DiscriminatorExpression = discriminatorExpression;
     }
 
@@ -70,8 +86,16 @@ public class EntityProjectionExpression : Expression
         var discriminatorExpression = (SqlExpression?)visitor.Visit(DiscriminatorExpression);
         changed |= discriminatorExpression != DiscriminatorExpression;
 
+        var ownedNavigationMap = new Dictionary<INavigation, EntityShaperExpression>();
+        foreach (var (navigation, entityShaperExpression) in _ownedNavigationMap)
+        {
+            var newExpression = (EntityShaperExpression)visitor.Visit(entityShaperExpression);
+            changed |= newExpression != entityShaperExpression;
+            ownedNavigationMap[navigation] = newExpression;
+        }
+
         return changed
-            ? new EntityProjectionExpression(EntityType, propertyExpressionMap, discriminatorExpression)
+            ? new EntityProjectionExpression(EntityType, propertyExpressionMap, ownedNavigationMap, discriminatorExpression)
             : this;
     }
 
@@ -93,7 +117,83 @@ public class EntityProjectionExpression : Expression
             // if discriminator is column then we need to make it nullable
             discriminatorExpression = ce.MakeNullable();
         }
-        return new EntityProjectionExpression(EntityType, propertyExpressionMap, discriminatorExpression);
+
+        var primaryKeyProperties = EntityType.FindPrimaryKey()!.GetMappedKeyProperties();
+
+        var changed = false;
+        var ownedNavigationMap = new Dictionary<INavigation, EntityShaperExpression>();
+        foreach (var (navigation, shaper) in _ownedNavigationMap)
+        {
+            var newShaper = shaper;
+            if (shaper.EntityType.IsMappedToJson())
+            {
+                var jsonQueryExpression = (JsonQueryExpression)shaper.ValueBufferExpression;
+                var ownedPrimaryKeyProperties = shaper.EntityType.FindPrimaryKey()!.GetMappedKeyProperties();
+
+                // reuse key columns from owner (that we just made nullable), so that the references are the same
+                var keyPropertyMap = new Dictionary<IProperty, ColumnExpression>();
+                for (var i = 0; i < primaryKeyProperties.Count(); i++)
+                {
+                    keyPropertyMap[ownedPrimaryKeyProperties[i]] = propertyExpressionMap[primaryKeyProperties[i]];
+                }
+
+                var newJsonQueryExpression = jsonQueryExpression.Update(
+                    jsonQueryExpression.JsonColumn.MakeNullable(),
+                    keyPropertyMap,
+                    jsonQueryExpression.JsonPath);
+
+                newShaper = shaper.Update(newJsonQueryExpression).MakeNullable();
+                if (newShaper != shaper)
+                {
+                    changed = true;
+                }
+            }
+
+            ownedNavigationMap[navigation] = newShaper;
+
+            //var newShaper = shaper;
+            //if (shaper.EntityType.IsMappedToJson())
+            //{
+            //    var jsonQueryExpression = (JsonQueryExpression)shaper.ValueBufferExpression;
+
+            //    var keyPropertyMap = new Dictionary<IProperty, ColumnExpression>();
+            //    var primaryKeyProperties = jsonQueryExpression.EntityType.FindPrimaryKey()!.Properties;
+            //    var primaryKeyPropertiesCount = jsonQueryExpression.IsCollection
+            //        ? primaryKeyProperties.Count - 1
+            //        : primaryKeyProperties.Count;
+
+            //    for (var i = 0; i < primaryKeyPropertiesCount; i++)
+            //    {
+
+
+
+
+
+            //        var keyProperty = primaryKeyProperties[i];
+            //        var keyColumn = (ColumnExpression)jsonQueryExpression.BindProperty(keyProperty);
+            //        keyPropertyMap[keyProperty] = keyColumn.MakeNullable();
+            //    }
+
+            //    var newJsonQueryExpression = jsonQueryExpression.Update(
+            //        jsonQueryExpression.JsonColumn.MakeNullable(),
+            //        keyPropertyMap,
+            //        jsonQueryExpression.JsonPath);
+
+            //    newShaper = shaper.Update(newJsonQueryExpression);
+            //    if (newShaper != shaper)
+            //    {
+            //        changed = true;
+            //    }
+            //}
+
+            //ownedNavigationMap[navigation] = newShaper;
+        }
+
+        return new EntityProjectionExpression(
+            EntityType,
+            propertyExpressionMap,
+            changed ? ownedNavigationMap : _ownedNavigationMap,
+            discriminatorExpression);
     }
 
     /// <summary>
@@ -120,6 +220,16 @@ public class EntityProjectionExpression : Expression
             }
         }
 
+        var ownedNavigationMap = new Dictionary<INavigation, EntityShaperExpression>();
+        foreach (var (navigation, entityShaperExpression) in _ownedNavigationMap)
+        {
+            if (derivedType.IsAssignableFrom(navigation.DeclaringEntityType)
+                || navigation.DeclaringEntityType.IsAssignableFrom(derivedType))
+            {
+                ownedNavigationMap[navigation] = entityShaperExpression;
+            }
+        }
+
         var discriminatorExpression = DiscriminatorExpression;
         if (DiscriminatorExpression is CaseExpression caseExpression)
         {
@@ -131,7 +241,7 @@ public class EntityProjectionExpression : Expression
             discriminatorExpression = caseExpression.Update(operand: null, whenClauses, elseResult: null);
         }
 
-        return new EntityProjectionExpression(derivedType, propertyExpressionMap, discriminatorExpression);
+        return new EntityProjectionExpression(derivedType, propertyExpressionMap, ownedNavigationMap, discriminatorExpression);
     }
 
     /// <summary>
