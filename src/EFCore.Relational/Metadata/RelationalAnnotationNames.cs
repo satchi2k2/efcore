@@ -263,4 +263,24 @@ public static class RelationalAnnotationNames
     ///     The name for the reader get value delegate annotations.
     /// </summary>
     public const string GetReaderFieldValue = Prefix + "GetReaderFieldValue";
+
+    /// <summary>
+    ///     The name for the annotation specifying JSON column name to which the object is mapped.
+    /// </summary>
+    public const string MapToJsonColumnName = Prefix + "MapToJsonColumnName";
+
+    /// <summary>
+    ///     The name for the annotation specifying JSON column type name to which the object is mapped.
+    /// </summary>
+    public const string MapToJsonColumnTypeName = Prefix + "MapToJsonColumnTypeName";
+
+    /// <summary>
+    ///     The name for the annotation specifying JSON column type mapping.
+    /// </summary>
+    public const string MapToJsonTypeMapping = Prefix + "MapToJsonTypeMapping";
+
+    /// <summary>
+    ///     The name for json element that the property/navigation maps to..
+    /// </summary>
+    public const string JsonElementName = Prefix + "JsonElementName";
 }

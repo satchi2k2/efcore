@@ -270,6 +270,12 @@ public class RelationalModelValidator : ModelValidator
         var tables = new Dictionary<StoreObjectIdentifier, List<IEntityType>>();
         foreach (var entityType in model.GetEntityTypes())
         {
+            // TODO: add proper validation for json
+            if (entityType.IsMappedToJson())
+            {
+                continue;
+            }
+
             var tableId = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table);
             if (tableId == null)
             {
@@ -400,7 +406,8 @@ public class RelationalModelValidator : ModelValidator
             return;
         }
 
-        var unvalidatedTypes = new HashSet<IEntityType>(mappedTypes);
+        // TODO: add proper validation for json-mapped types instead of filtering them out
+        var unvalidatedTypes = new HashSet<IEntityType>(mappedTypes/*.Where(x => !x.IsMappedToJson())*/);
         IEntityType? root = null;
         foreach (var mappedType in mappedTypes)
         {
@@ -718,6 +725,11 @@ public class RelationalModelValidator : ModelValidator
                     continue;
                 }
                 
+                if (columnName == null)
+                {
+                    continue;
+                }
+
                 missingConcurrencyTokens?.Remove(columnName);
                 if (!propertyMappings.TryGetValue(columnName, out var duplicateProperty))
                 {

@@ -4,6 +4,7 @@
 using System.Collections;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore.Update.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Migrations.Internal;
@@ -683,8 +684,9 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
 
     private static IEnumerable<IColumn> GetSortedColumns(ITable table)
     {
-        var columns = table.Columns.ToHashSet();
+        var columns = table.Columns.Where(x => x is not JsonColumn).ToHashSet();
         var sortedColumns = new List<IColumn>(columns.Count);
+
         foreach (var property in GetSortedProperties(GetMainType(table).GetRootType(), table))
         {
             var column = table.FindColumn(property)!;
@@ -694,7 +696,8 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
             }
         }
 
-        Check.DebugAssert(columns.Count == 0, "columns is not empty");
+        // TODO: incorporate into column ordering logic properly
+        Check.DebugAssert(columns.Count(x => x is not JsonColumn) == 0, "columns is not empty");
 
         return sortedColumns.Where(c => c.Order.HasValue).OrderBy(c => c.Order)
             .Concat(sortedColumns.Where(c => !c.Order.HasValue))

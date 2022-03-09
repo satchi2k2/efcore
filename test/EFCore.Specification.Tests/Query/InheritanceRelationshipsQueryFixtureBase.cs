@@ -8,13 +8,22 @@ namespace Microsoft.EntityFrameworkCore.Query;
 public abstract class InheritanceRelationshipsQueryFixtureBase : SharedStoreFixtureBase<InheritanceRelationshipsContext>,
     IQueryFixtureBase
 {
+    private InheritanceRelationshipsData _expectedData;
+
     protected override string StoreName { get; } = "InheritanceRelationships";
 
     public Func<DbContext> GetContextCreator()
         => () => CreateContext();
 
     public virtual ISetSource GetExpectedData()
-        => new InheritanceRelationshipsData();
+    {
+        if (_expectedData == null)
+        {
+            _expectedData = new InheritanceRelationshipsData();
+        }
+
+        return _expectedData;
+    }
 
     public IReadOnlyDictionary<Type, object> GetEntitySorters()
         => new Dictionary<Type, Func<object, object>>
