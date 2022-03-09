@@ -81,7 +81,8 @@ public class CSharpMigrationsGeneratorTest
             RelationalAnnotationNames.RelationalModel,
             RelationalAnnotationNames.ModelDependencies,
             RelationalAnnotationNames.Triggers, // Appears on entity but requires provider-specific support
-            RelationalAnnotationNames.GetReaderFieldValue
+            RelationalAnnotationNames.GetReaderFieldValue,
+            RelationalAnnotationNames.JsonColumnName, // Appears on entity type but requires specific model (i.e. owned types that can map to json, otherwise validation throws)
         };
 
         // Add a line here if the code generator is supposed to handle this annotation
@@ -156,7 +157,7 @@ public class CSharpMigrationsGeneratorTest
                 RelationalAnnotationNames.SqlQuery,
                 (null, _toNullTable + ";" + _nl + _nl
                     + "entityTypeBuilder." + nameof(RelationalEntityTypeBuilderExtensions.ToSqlQuery) + @"(null)")
-            }
+            },
         };
 
         MissingAnnotationCheck(

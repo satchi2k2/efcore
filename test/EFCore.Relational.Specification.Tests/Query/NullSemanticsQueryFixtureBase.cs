@@ -7,11 +7,20 @@ namespace Microsoft.EntityFrameworkCore.Query;
 
 public abstract class NullSemanticsQueryFixtureBase : SharedStoreFixtureBase<NullSemanticsContext>, IQueryFixtureBase
 {
+    private NullSemanticsData _expectedData;
+
     public Func<DbContext> GetContextCreator()
         => () => CreateContext();
 
     public virtual ISetSource GetExpectedData()
-        => new NullSemanticsData();
+    {
+        if (_expectedData == null)
+        {
+            _expectedData = new NullSemanticsData();
+        }
+
+        return _expectedData;
+    }
 
     public IReadOnlyDictionary<Type, object> GetEntitySorters()
         => new Dictionary<Type, Func<object, object>>

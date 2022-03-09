@@ -89,7 +89,8 @@ public class RelationalEntityShaperExpression : EntityShaperExpression
         if (containsDiscriminatorProperty
             || entityType.FindPrimaryKey() == null
             || entityType.GetRootType() != entityType
-            || entityType.GetMappingStrategy() == RelationalAnnotationNames.TpcMappingStrategy)
+            || entityType.GetMappingStrategy() == RelationalAnnotationNames.TpcMappingStrategy
+            || entityType.IsMappedToJson())
         {
             return baseCondition;
         }
@@ -100,6 +101,7 @@ public class RelationalEntityShaperExpression : EntityShaperExpression
         {
             // Optional dependent
             var valueBufferParameter = baseCondition.Parameters[0];
+
             var condition = entityType.GetNonPrincipalSharedNonPkProperties(table)
                 .Where(e => !e.IsNullable)
                 .Select(
