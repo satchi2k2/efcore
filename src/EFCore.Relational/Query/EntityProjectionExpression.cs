@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using System.Collections.ObjectModel;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
 namespace Microsoft.EntityFrameworkCore.Query;
@@ -18,7 +18,7 @@ namespace Microsoft.EntityFrameworkCore.Query;
 public class EntityProjectionExpression : Expression
 {
     private readonly IReadOnlyDictionary<IProperty, ColumnExpression> _propertyExpressionMap;
-    private readonly Dictionary<INavigation, EntityShaperExpression> _ownedNavigationMap = new();
+    private readonly Dictionary<INavigation, EntityShaperExpression> _ownedNavigationMap;
 
     /// <summary>
     ///     Creates a new instance of the <see cref="EntityProjectionExpression" /> class.
@@ -30,9 +30,31 @@ public class EntityProjectionExpression : Expression
         IEntityType entityType,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
         SqlExpression? discriminatorExpression = null)
+        : this(
+              entityType,
+              propertyExpressionMap,
+              new ReadOnlyDictionary<INavigation, EntityShaperExpression>(
+                  new Dictionary<INavigation, EntityShaperExpression>()),
+              discriminatorExpression)
+    {
+    }
+
+    /// <summary>
+    ///     Creates a new instance of the <see cref="EntityProjectionExpression" /> class.
+    /// </summary>
+    /// <param name="entityType">The entity type to shape.</param>
+    /// <param name="propertyExpressionMap">A dictionary of column expressions corresponding to properties of the entity type.</param>
+    /// <param name="jsonNavigationMap">A dictionary of navigations corresponding to json query expressions.</param>
+    /// <param name="discriminatorExpression">A <see cref="SqlExpression" /> to generate discriminator for each concrete entity type in hierarchy.</param>
+    public EntityProjectionExpression(
+        IEntityType entityType,
+        IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
+        IDictionary<INavigation, EntityShaperExpression> jsonNavigationMap,
+        SqlExpression? discriminatorExpression = null)
     {
         EntityType = entityType;
         _propertyExpressionMap = propertyExpressionMap;
+        _ownedNavigationMap = new(jsonNavigationMap);
         DiscriminatorExpression = discriminatorExpression;
     }
 
@@ -70,8 +92,16 @@ public class EntityProjectionExpression : Expression
         var discriminatorExpression = (SqlExpression?)visitor.Visit(DiscriminatorExpression);
         changed |= discriminatorExpression != DiscriminatorExpression;
 
+        var ownedNavigationMap = new Dictionary<INavigation, EntityShaperExpression>();
+        foreach (var (navigation, entityShaperExpression) in _ownedNavigationMap)
+        {
+            var newExpression = (EntityShaperExpression)visitor.Visit(entityShaperExpression);
+            changed |= newExpression != entityShaperExpression;
+            ownedNavigationMap[navigation] = newExpression;
+        }
+
         return changed
-            ? new EntityProjectionExpression(EntityType, propertyExpressionMap, discriminatorExpression)
+            ? new EntityProjectionExpression(EntityType, propertyExpressionMap, ownedNavigationMap, discriminatorExpression)
             : this;
     }
 
@@ -93,7 +123,7 @@ public class EntityProjectionExpression : Expression
             // if discriminator is column then we need to make it nullable
             discriminatorExpression = ce.MakeNullable();
         }
-        return new EntityProjectionExpression(EntityType, propertyExpressionMap, discriminatorExpression);
+        return new EntityProjectionExpression(EntityType, propertyExpressionMap, _ownedNavigationMap, discriminatorExpression);
     }
 
     /// <summary>
@@ -120,6 +150,16 @@ public class EntityProjectionExpression : Expression
             }
         }
 
+        var ownedNavigationMap = new Dictionary<INavigation, EntityShaperExpression>();
+        foreach (var (navigation, entityShaperExpression) in _ownedNavigationMap)
+        {
+            if (derivedType.IsAssignableFrom(navigation.DeclaringEntityType)
+                || navigation.DeclaringEntityType.IsAssignableFrom(derivedType))
+            {
+                ownedNavigationMap[navigation] = entityShaperExpression;
+            }
+        }
+
         var discriminatorExpression = DiscriminatorExpression;
         if (DiscriminatorExpression is CaseExpression caseExpression)
         {
@@ -131,7 +171,7 @@ public class EntityProjectionExpression : Expression
             discriminatorExpression = caseExpression.Update(operand: null, whenClauses, elseResult: null);
         }
 
-        return new EntityProjectionExpression(derivedType, propertyExpressionMap, discriminatorExpression);
+        return new EntityProjectionExpression(derivedType, propertyExpressionMap, ownedNavigationMap, discriminatorExpression);
     }
 
     /// <summary>

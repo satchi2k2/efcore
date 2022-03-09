@@ -27,6 +27,13 @@ public static class RelationalForeignKeyExtensions
             return null;
         }
 
+        // don't create constraint for non-unique json ownership FKs
+        // so we don't try to do unnecessary validation on them
+        if (foreignKey.IsOwnership && foreignKey.DeclaringEntityType.IsMappedToJson() && !foreignKey.IsUnique)
+        {
+            return null;
+        }
+
         var annotation = foreignKey.FindAnnotation(RelationalAnnotationNames.Name);
         return annotation != null
             ? (string?)annotation.Value
@@ -47,6 +54,13 @@ public static class RelationalForeignKeyExtensions
     {
         if (storeObject.StoreObjectType != StoreObjectType.Table
             || principalStoreObject.StoreObjectType != StoreObjectType.Table)
+        {
+            return null;
+        }
+
+        // don't create constraint for non-unique json ownership FKs
+        // so we don't try to do unnecessary validation on them
+        if (foreignKey.IsOwnership && foreignKey.DeclaringEntityType.IsMappedToJson() && !foreignKey.IsUnique)
         {
             return null;
         }

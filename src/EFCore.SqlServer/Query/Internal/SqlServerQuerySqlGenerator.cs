@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
 
@@ -167,6 +168,44 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
         }
 
         return base.VisitExtension(extensionExpression);
+    }
+
+    /// <inheritdoc />
+    protected override Expression VisitJsonScalarExpression(JsonScalarExpression jsonScalarExpression)
+    {
+        if (jsonScalarExpression.Type == typeof(JsonElement))
+        {
+            Sql.Append("JSON_QUERY(");
+        }
+        else
+        {
+            Sql.Append("CAST(JSON_VALUE(");
+        }
+
+        Visit(jsonScalarExpression.JsonColumn);
+        Sql.Append(",");
+
+        var jsonPath = string.Join(".", jsonScalarExpression.JsonPath);
+        if (!string.IsNullOrEmpty(jsonPath))
+        {
+            jsonPath = "$." + jsonPath;
+        }
+        else
+        {
+            jsonPath = "$";
+        }
+
+        Sql.Append("'" + jsonPath + "'");
+        Sql.Append(")");
+
+        if (jsonScalarExpression.Type != typeof(JsonElement))
+        {
+            Sql.Append(" AS ");
+            Sql.Append(jsonScalarExpression.TypeMapping!.StoreType);
+            Sql.Append(")");
+        }
+
+        return jsonScalarExpression;
     }
 
     /// <inheritdoc />
