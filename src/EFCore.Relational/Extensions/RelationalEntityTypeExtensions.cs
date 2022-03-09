@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 // ReSharper disable once CheckNamespace
@@ -62,7 +63,7 @@ public static class RelationalEntityTypeExtensions
 
         var ownership = entityType.FindOwnership();
         if (ownership != null
-            && ownership.IsUnique)
+            && (ownership.IsUnique || entityType.IsMappedToJson()))
         {
             return ownership.PrincipalEntityType.GetTableName();
         }
@@ -1113,6 +1114,7 @@ public static class RelationalEntityTypeExtensions
             yield break;
         }
 
+        var mappedToJson = entityType.IsMappedToJson();
         foreach (var foreignKey in entityType.GetForeignKeys())
         {
             if (!foreignKey.PrincipalKey.IsPrimaryKey()
@@ -1576,4 +1578,120 @@ public static class RelationalEntityTypeExtensions
         => Trigger.GetDeclaredTriggers(entityType).Cast<ITrigger>();
 
     #endregion Trigger
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static bool IsMappedToJson(this IEntityType entityType)
+        => !string.IsNullOrEmpty(entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)?.Value as string);
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static bool IsMappedToJson(this IMutableEntityType entityType)
+        => !string.IsNullOrEmpty(entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)?.Value as string);
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static bool IsMappedToJson(this IConventionEntityType entityType)
+        => !string.IsNullOrEmpty(entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)?.Value as string);
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static bool IsMappedToJson(this IReadOnlyEntityType entityType)
+        => !string.IsNullOrEmpty(entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)?.Value as string);
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static void SetJsonColumnName(this IMutableEntityType entityType, string columnName)
+        => entityType.SetOrRemoveAnnotation(RelationalAnnotationNames.JsonColumnName, columnName);
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static string? SetJsonColumnName(
+        this IConventionEntityType entityType,
+        string columnName,
+        bool fromDataAnnotation = false)
+        => (string?)entityType.SetAnnotation(RelationalAnnotationNames.JsonColumnName, columnName, fromDataAnnotation)?.Value;
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static ConfigurationSource? GetJsonColumnNameConfigurationSource(this IConventionEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)
+            ?.GetConfigurationSource();
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static string? JsonColumnName(this IEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)?.Value as string;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static string? JsonColumnName(this IMutableEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)?.Value as string;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static string? JsonColumnName(this IConventionEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)?.Value as string;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static string? JsonColumnName(this IReadOnlyEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnName)?.Value as string;
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static void SetJsonColumnTypeMapping(this IMutableEntityType entityType, RelationalTypeMapping typeMapping)
+        => entityType.SetOrRemoveAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping, typeMapping);
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static RelationalTypeMapping? SetJsonColumnTypeMapping(
+        this IConventionEntityType entityType,
+        RelationalTypeMapping typeMapping,
+        bool fromDataAnnotation = false)
+        => (RelationalTypeMapping?)entityType.SetAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping, typeMapping, fromDataAnnotation)?.Value;
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static ConfigurationSource? GetJsonColumnTypeMappingConfigurationSource(this IConventionEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping)
+            ?.GetConfigurationSource();
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static RelationalTypeMapping? JsonColumnTypeMapping(this IEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping)?.Value as RelationalTypeMapping;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static RelationalTypeMapping? JsonColumnTypeMapping(this IMutableEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping)?.Value as RelationalTypeMapping;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static RelationalTypeMapping? JsonColumnTypeMapping(this IConventionEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping)?.Value as RelationalTypeMapping;
+
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static RelationalTypeMapping? JsonColumnTypeMapping(this IReadOnlyEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping)?.Value as RelationalTypeMapping;
 }

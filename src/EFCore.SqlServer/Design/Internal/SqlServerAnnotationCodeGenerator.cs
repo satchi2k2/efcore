@@ -99,6 +99,10 @@ public class SqlServerAnnotationCodeGenerator : AnnotationCodeGenerator
         = typeof(TemporalPeriodPropertyBuilder).GetRuntimeMethod(
             nameof(TemporalPeriodPropertyBuilder.HasColumnName), new[] { typeof(string) })!;
 
+    private static readonly MethodInfo ToJsonMethodInfo
+        = typeof(RelationalOwnedNavigationBuilderExtensions).GetRuntimeMethod(
+            nameof(RelationalOwnedNavigationBuilderExtensions.ToJson), new[] { typeof(OwnedNavigationBuilder), typeof(string) })!;
+
     #endregion MethodInfos
 
     /// <summary>
@@ -274,6 +278,20 @@ public class SqlServerAnnotationCodeGenerator : AnnotationCodeGenerator
             annotations.Remove(SqlServerAnnotationNames.TemporalHistoryTableSchema);
             annotations.Remove(SqlServerAnnotationNames.TemporalPeriodStartPropertyName);
             annotations.Remove(SqlServerAnnotationNames.TemporalPeriodEndPropertyName);
+        }
+
+        if (annotations.TryGetValue(RelationalAnnotationNames.JsonColumnName, out var jsonColumnNameAnnotation)
+            && jsonColumnNameAnnotation != null && jsonColumnNameAnnotation.Value is string jsonColumnName)
+        {
+            // adding this at every level since we can't rely on conventions propagating them down
+            var toJsonCall = new MethodCallCodeFragment(
+                ToJsonMethodInfo,
+                jsonColumnName);
+
+            fragments.Add(toJsonCall);
+
+            annotations.Remove(RelationalAnnotationNames.JsonColumnName);
+            annotations.Remove(RelationalAnnotationNames.JsonColumnTypeMapping);
         }
 
         return fragments;
