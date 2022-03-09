@@ -1186,4 +1186,8 @@ public class QuerySqlGenerator : SqlExpressionVisitor
 
         return unionExpression;
     }
+
+    /// <inheritdoc />
+    protected override Expression VisitJsonScalarExpression(JsonScalarExpression jsonScalarExpression)
+        => throw new InvalidOperationException("This node should be handled by provider-specific sql generator.");
 }
