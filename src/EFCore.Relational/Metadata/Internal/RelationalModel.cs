@@ -1,6 +1,9 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore.Storage;
+
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 /// <summary>
@@ -114,9 +117,16 @@ public class RelationalModel : Annotatable, IRelationalModel
     public static IModel Add(
         IModel model,
         IRelationalAnnotationProvider? relationalAnnotationProvider,
+        IRelationalTypeMappingSource? relationalTypeMappingSource,
         bool designTime)
     {
-        model.AddRuntimeAnnotation(RelationalAnnotationNames.RelationalModel, Create(model, relationalAnnotationProvider, designTime));
+        model.AddRuntimeAnnotation(
+            RelationalAnnotationNames.RelationalModel,
+            Create(
+                model,
+                relationalAnnotationProvider,
+                relationalTypeMappingSource,
+                designTime));
         return model;
     }
 
@@ -129,6 +139,7 @@ public class RelationalModel : Annotatable, IRelationalModel
     public static IRelationalModel Create(
         IModel model,
         IRelationalAnnotationProvider? relationalAnnotationProvider,
+        IRelationalTypeMappingSource? relationalTypeMappingSource,
         bool designTime)
     {
         var databaseModel = new RelationalModel(model);
@@ -137,7 +148,7 @@ public class RelationalModel : Annotatable, IRelationalModel
         {
             AddDefaultMappings(databaseModel, entityType);
 
-            AddTables(databaseModel, entityType);
+            AddTables(databaseModel, entityType, relationalTypeMappingSource);
 
             AddViews(databaseModel, entityType);
 
@@ -331,7 +342,10 @@ public class RelationalModel : Annotatable, IRelationalModel
         tableMappings.Reverse();
     }
 
-    private static void AddTables(RelationalModel databaseModel, IEntityType entityType)
+    private static void AddTables(
+        RelationalModel databaseModel,
+        IEntityType entityType,
+        IRelationalTypeMappingSource? relationalTypeMappingSource)
     {
         if (entityType.GetTableName() == null)
         {
@@ -365,6 +379,7 @@ public class RelationalModel : Annotatable, IRelationalModel
             foreach (var fragment in mappedType.GetMappingFragments(StoreObjectType.Table))
             {
                 CreateTableMapping(
+                    relationalTypeMappingSource,
                     entityType,
                     mappedType,
                     fragment.StoreObject,
@@ -375,6 +390,7 @@ public class RelationalModel : Annotatable, IRelationalModel
             }
 
             CreateTableMapping(
+                relationalTypeMappingSource,
                 entityType,
                 mappedType,
                 StoreObjectIdentifier.Table(mappedTableName, mappedSchema),
@@ -395,6 +411,7 @@ public class RelationalModel : Annotatable, IRelationalModel
     }
 
     private static TableMapping CreateTableMapping(
+        IRelationalTypeMappingSource? relationalTypeMappingSource,
         IEntityType entityType,
         IEntityType mappedType,
         StoreObjectIdentifier mappedTable,
@@ -413,7 +430,35 @@ public class RelationalModel : Annotatable, IRelationalModel
         {
             IsSplitEntityTypePrincipal = isSplitEntityTypePrincipal
         };
-        
+
+        var jsonColumnName = mappedType.JsonColumnName();
+        var jsonColumn = default(JsonColumn);
+        var ownership = default(IForeignKey);
+        if (!string.IsNullOrEmpty(jsonColumnName))
+        {
+            jsonColumn = (JsonColumn?)table.FindColumn(jsonColumnName);
+            if (jsonColumn == null)
+            {
+                var jsonColumnTypeName = mappedType.JsonColumnTypeName();
+                var jsonColumnTypeMapping = relationalTypeMappingSource!.FindMapping(typeof(JsonElement), jsonColumnTypeName)!;
+                jsonColumn = new JsonColumn(jsonColumnName, jsonColumnTypeMapping.StoreType, table);
+                table.Columns.Add(jsonColumnName, jsonColumn);
+            }
+
+            ownership = mappedType.GetForeignKeys().Where(fk => fk.IsOwnership).Single();
+            if (!ownership.PrincipalEntityType.IsMappedToJson())
+            {
+                // nullability of the json column depends on the nullability of the outer-most navigation
+                jsonColumn.IsNullable = !ownership.IsRequired || !ownership.IsUnique;
+            }
+
+            if (ownership.PrincipalEntityType.BaseType != null)
+            {
+                // if navigation is defined on a derived type, the column must be made nullable
+                jsonColumn.IsNullable = true;
+            }
+        }
+
         foreach (var property in mappedType.GetProperties())
         {
             var columnName = property.GetColumnName(mappedTable);
@@ -422,14 +467,34 @@ public class RelationalModel : Annotatable, IRelationalModel
                 continue;
             }
 
-            var column = (Column?)table.FindColumn(columnName);
+            Column? column;
+            if (jsonColumn != null && ownership != null && !property.IsPrimaryKey())
+            {
+                column = jsonColumn.FindColumn(ownership, columnName);
+            }
+            else
+            {
+                column = (Column?)table.FindColumn(columnName);
+            }
+
             if (column == null)
             {
+                // TODO: for json entities there is some abiguity - if there is property on the owner entity with the same name as the property on the owned, json mapped entity
+                // the columns will look the same - column name, type and table are the same, but they are two different columns!
+                // Should we add faux table for those columns or something to distinguish or just rely on property mappings to tell them apart?
                 column = new(columnName, property.GetColumnType(mappedTable), table)
                 {
                     IsNullable = property.IsColumnNullable(mappedTable)
                 };
-                table.Columns.Add(columnName, column);
+
+                if (jsonColumn != null && ownership != null && !property.IsPrimaryKey())
+                {
+                    jsonColumn.AddColumn(ownership, columnName, column);
+                }
+                else
+                {
+                    table.Columns.Add(columnName, column);
+                }
             }
             else if (!property.IsColumnNullable(mappedTable))
             {
@@ -1019,9 +1084,18 @@ public class RelationalModel : Annotatable, IRelationalModel
             }
 
             SortedSet<IForeignKey>? rowInternalForeignKeys = null;
-            foreach (var foreignKey in entityType.FindForeignKeys(primaryKey.Properties))
+
+            // for json mapped entities filter out collection key
+            // TODO: only do it for entities that are collections (and not references)
+            // TODO2: what about 3 level deep hierarchy (for middle entity PK is also FK), should we just chop off the last property of the collection key?
+            var foreignKeys = entityType.IsMappedToJson()
+                ? entityType.FindForeignKeys(primaryKey.Properties.Where(p => p.IsForeignKey()).ToList().AsReadOnly())
+                : entityType.FindForeignKeys(primaryKey.Properties);
+
+            foreach (var foreignKey in foreignKeys)
             {
-                if (foreignKey.IsUnique
+                // for json mapped entities we can have row internal FKs for collection navigations
+                if ((foreignKey.IsUnique || entityType.IsMappedToJson())
                     && foreignKey.PrincipalKey.IsPrimaryKey()
                     && !foreignKey.DeclaringEntityType.IsAssignableFrom(foreignKey.PrincipalEntityType)
                     && !foreignKey.PrincipalEntityType.IsAssignableFrom(foreignKey.DeclaringEntityType)
