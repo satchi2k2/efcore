@@ -168,7 +168,7 @@ public static class RelationalPropertyExtensions
     /// <param name="property">The property.</param>
     /// <param name="storeObject">The identifier of the table-like store object containing the column.</param>
     /// <returns>The default column name to which the property would be mapped.</returns>
-    public static string GetDefaultColumnName(this IReadOnlyProperty property, in StoreObjectIdentifier storeObject)
+    public static string? GetDefaultColumnName(this IReadOnlyProperty property, in StoreObjectIdentifier storeObject)
     {
         var sharedTablePrincipalPrimaryKeyProperty = FindSharedObjectRootPrimaryKeyProperty(property, storeObject);
         if (sharedTablePrincipalPrimaryKeyProperty != null)
@@ -180,6 +180,14 @@ public static class RelationalPropertyExtensions
         if (sharedTablePrincipalConcurrencyProperty != null)
         {
             return sharedTablePrincipalConcurrencyProperty.GetColumnName(storeObject)!;
+        }
+
+        if (property.DeclaringEntityType.IsMappedToJson())
+        {
+            // only PKs that are unhandled at this point should be ordinal keys - not mapped to anything
+            return property.IsPrimaryKey()
+                ? null
+                : property.GetDefaultColumnName();
         }
 
         var entityType = property.DeclaringEntityType;
@@ -1328,6 +1336,12 @@ public static class RelationalPropertyExtensions
 
     private static IReadOnlyProperty? FindSharedObjectRootProperty(IReadOnlyProperty property, in StoreObjectIdentifier storeObject)
     {
+        if (property.DeclaringEntityType.IsMappedToJson())
+        {
+            //JSON-splitting is not supported
+            return null;
+        }
+
         var column = property.GetColumnName(storeObject);
         if (column == null)
         {
@@ -1374,6 +1388,7 @@ public static class RelationalPropertyExtensions
             return null;
         }
 
+        var mappedToJson = property.DeclaringEntityType.IsMappedToJson();
         var principalProperty = property;
 
         // Limit traversal to avoid getting stuck in a cycle (validation will throw for these later)
@@ -1387,7 +1402,21 @@ public static class RelationalPropertyExtensions
                 break;
             }
 
-            principalProperty = linkingRelationship.PrincipalKey.Properties[linkingRelationship.Properties.IndexOf(principalProperty)];
+            if (mappedToJson)
+            {
+                // for json collection entities don't match the ordinal key
+                var index = linkingRelationship.Properties.IndexOf(principalProperty);
+                if (index == -1)
+                {
+                    return null;
+                }
+
+                principalProperty = linkingRelationship.PrincipalKey.Properties[index];
+            }
+            else
+            {
+                principalProperty = linkingRelationship.PrincipalKey.Properties[linkingRelationship.Properties.IndexOf(principalProperty)];
+            }
         }
 
         return principalProperty == property ? null : principalProperty;
@@ -1840,4 +1869,40 @@ public static class RelationalPropertyExtensions
 
         throw new InvalidOperationException(message, exception);
     }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static string GetJsonElementName(this IReadOnlyProperty property)
+        => (string?)property.FindAnnotation(RelationalAnnotationNames.JsonElementName)?.Value ?? property.Name;
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static void SetJsonElementName(this IMutableProperty property, string? name)
+        => property.SetOrRemoveAnnotation(
+            RelationalAnnotationNames.JsonElementName,
+            Check.NullButNotEmpty(name, nameof(name)));
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static string? SetJsonElementName(
+        this IConventionProperty property,
+        string? name,
+        bool fromDataAnnotation = false)
+    {
+        property.SetOrRemoveAnnotation(
+            RelationalAnnotationNames.JsonElementName,
+            Check.NullButNotEmpty(name, nameof(name)),
+            fromDataAnnotation);
+
+        return name;
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static ConfigurationSource? GetJsonElementNameConfigurationSource(this IConventionProperty property)
+        => property.FindAnnotation(RelationalAnnotationNames.JsonElementName)?.GetConfigurationSource();
 }

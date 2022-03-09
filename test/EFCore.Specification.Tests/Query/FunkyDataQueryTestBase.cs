@@ -515,11 +515,20 @@ public abstract class FunkyDataQueryTestBase<TFixture> : QueryTestBase<TFixture>
 
     public abstract class FunkyDataQueryFixtureBase : SharedStoreFixtureBase<FunkyDataContext>, IQueryFixtureBase
     {
+        private FunkyDataData _expectedData;
+
         public Func<DbContext> GetContextCreator()
             => () => CreateContext();
 
         public virtual ISetSource GetExpectedData()
-            => new FunkyDataData();
+        {
+            if (_expectedData == null)
+            {
+                _expectedData = new FunkyDataData();
+            }
+
+            return _expectedData;
+        }
 
         public IReadOnlyDictionary<Type, object> GetEntitySorters()
             => new Dictionary<Type, Func<object, object>> { { typeof(FunkyCustomer), e => ((FunkyCustomer)e)?.Id } }
