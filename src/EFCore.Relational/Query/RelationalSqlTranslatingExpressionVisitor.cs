@@ -598,6 +598,7 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
             case EntityProjectionExpression:
             case EntityReferenceExpression:
             case SqlExpression:
+            case JsonQueryExpression:
                 return extensionExpression;
 
             case EntityShaperExpression entityShaperExpression:
@@ -1303,6 +1304,17 @@ public class RelationalSqlTranslatingExpressionVisitor : ExpressionVisitor
         if (entityReferenceExpression.ParameterEntity != null)
         {
             var valueBufferExpression = Visit(entityReferenceExpression.ParameterEntity.ValueBufferExpression);
+            if (valueBufferExpression is JsonQueryExpression jsonQueryExpression)
+            {
+                return jsonQueryExpression.BindProperty(property);
+            }
+
+            //if (entityReferenceExpression.ParameterEntity.ValueBufferExpression is JsonQueryExpression jsonQueryExpression)
+            //{
+            //    return jsonQueryExpression.BindProperty(property);
+            //}
+
+            //var valueBufferExpression = Visit(entityReferenceExpression.ParameterEntity.ValueBufferExpression);
 
             var entityProjectionExpression = (EntityProjectionExpression)valueBufferExpression;
             var propertyAccess = entityProjectionExpression.BindProperty(property);
