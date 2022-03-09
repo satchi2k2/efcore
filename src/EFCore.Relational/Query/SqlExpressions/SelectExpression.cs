@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 
@@ -338,7 +339,49 @@ public sealed partial class SelectExpression : TableExpressionBase
                     propertyExpressions[property] = CreateColumnExpression(property, table, tableReferenceExpression, nullable: false);
                 }
 
+                var jsonNavigationMap = new Dictionary<INavigation, EntityShaperExpression>();
+                foreach (var ownedJsonNavigation in entityType.GetNavigations().Where(n => n.ForeignKey.IsOwnership && n.TargetEntityType.IsMappedToJson()))
+                {
+                    var targetEntityType = ownedJsonNavigation.TargetEntityType;
+                    var jsonColumnName = targetEntityType.MappedToJsonColumnName()!;
+                    var jsonColumnTypeMapping = (RelationalTypeMapping)targetEntityType.FindRuntimeAnnotationValue(RelationalAnnotationNames.MapToJsonTypeMapping)!;
+
+                    var jsonColumn = new ConcreteColumnExpression(
+                        jsonColumnName,
+                        tableReferenceExpression,
+                        jsonColumnTypeMapping.ClrType,
+                        jsonColumnTypeMapping,
+                        nullable: !ownedJsonNavigation.ForeignKey.IsRequired || ownedJsonNavigation.IsCollection);
+
+                    // for json collections we need to skip ordinal key (which is always the last one)
+                    // simple copy from parent is safe here, because we only do it at top level
+                    // so there is no danger of multiple keys being synthesized (like we have in multi-level nav chains)
+                    var keyPropertiesMap = new Dictionary<IProperty, ColumnExpression>();
+                    var keyProperties = targetEntityType.FindPrimaryKey()!.Properties;
+                    var keyPropertiesCount = ownedJsonNavigation.IsCollection
+                        ? keyProperties.Count - 1
+                        : keyProperties.Count;
+
+                    for (var i = 0; i < keyPropertiesCount; i++)
+                    {
+                        var correspondingParentKeyProperty = ownedJsonNavigation.ForeignKey.PrincipalKey.Properties[i];
+                        keyPropertiesMap[keyProperties[i]] = propertyExpressions[correspondingParentKeyProperty];
+                    }
+
+                    var entityShaperExpression = new RelationalEntityShaperExpression(
+                        targetEntityType,
+                        new JsonQueryExpression(targetEntityType, jsonColumn, ownedJsonNavigation, keyPropertiesMap),
+                        !ownedJsonNavigation.ForeignKey.IsRequired);
+
+                    jsonNavigationMap[ownedJsonNavigation] = entityShaperExpression;
+                }
+
                 var entityProjection = new EntityProjectionExpression(entityType, propertyExpressions);
+                foreach (var jsonNavigationMapElement in jsonNavigationMap)
+                {
+                    entityProjection.AddNavigationBinding(jsonNavigationMapElement.Key, jsonNavigationMapElement.Value);
+                }
+
                 _projectionMapping[new ProjectionMember()] = entityProjection;
 
                 var primaryKey = entityType.FindPrimaryKey();
@@ -494,6 +537,20 @@ public sealed partial class SelectExpression : TableExpressionBase
                         entityProjectionValueComparers.Add(property.GetKeyValueComparer());
                     }
                 }
+                else if (projection is JsonQueryExpression jsonQueryExpression)
+                {
+                    var primaryKeyProperties = jsonQueryExpression.EntityType.FindPrimaryKey()!.Properties;
+                    var primaryKeyPropertiesCount = jsonQueryExpression.Navigation.IsCollection
+                        ? primaryKeyProperties.Count() - 1
+                        : primaryKeyProperties.Count();
+
+                    for (var i = 0; i < primaryKeyPropertiesCount; i++)
+                    {
+                        var keyProperty = primaryKeyProperties[i];
+                        entityProjectionIdentifiers.Add((ColumnExpression)jsonQueryExpression.BindProperty(keyProperty));
+                        entityProjectionValueComparers.Add(keyProperty.GetKeyValueComparer());
+                    }
+                }
                 else if (projection is SqlExpression sqlExpression)
                 {
                     otherExpressions.Add(sqlExpression);
@@ -623,6 +680,8 @@ public sealed partial class SelectExpression : TableExpressionBase
             var pushdownOccurred = false;
             var containsCollection = false;
             var containsSingleResult = false;
+            var jsonClientProjectionsCount = 0;
+
             foreach (var projection in _clientProjections)
             {
                 if (projection is ShapedQueryExpression sqe)
@@ -637,6 +696,11 @@ public sealed partial class SelectExpression : TableExpressionBase
                     {
                         containsSingleResult = true;
                     }
+                }
+
+                if (projection is JsonQueryExpression)
+                {
+                    jsonClientProjectionsCount++;
                 }
             }
 
@@ -692,6 +756,7 @@ public sealed partial class SelectExpression : TableExpressionBase
                 }
             }
 
+            var jsonClientProjectionDeduplicationMap = BuildJsonProjectionDeduplicationMap(_clientProjections);
             var earlierClientProjectionCount = _clientProjections.Count;
             var newClientProjections = new List<Expression>();
             var clientProjectionIndexMap = new List<object>();
@@ -719,6 +784,14 @@ public sealed partial class SelectExpression : TableExpressionBase
 
                         break;
                     }
+
+                    case JsonQueryExpression jsonQueryExpression:
+                        var jsonProjectionResult = AddJsonProjection(jsonQueryExpression, jsonScalarToAdd: jsonClientProjectionDeduplicationMap[i]);
+                        newClientProjections.Add(jsonProjectionResult);
+                        clientProjectionIndexMap.Add(newClientProjections.Count - 1);
+
+                        break;
+
 
                     case SqlExpression sqlExpression:
                     {
@@ -1179,14 +1252,23 @@ public sealed partial class SelectExpression : TableExpressionBase
                 return innerShaperExpression;
             }
         }
-
+        else
         {
+            var jsonProjectionDeduplicationMap = BuildJsonProjectionDeduplicationMap(
+                _projectionMapping.Select(x => x.Value).OfType<JsonQueryExpression>());
+
             var result = new Dictionary<ProjectionMember, Expression>(_projectionMapping.Count);
+
+            var index = 0;
             foreach (var (projectionMember, expression) in _projectionMapping)
             {
                 result[projectionMember] = expression is EntityProjectionExpression entityProjection
                     ? AddEntityProjection(entityProjection)
-                    : Constant(AddToProjection((SqlExpression)expression, projectionMember.Last?.Name));
+                    : expression is JsonQueryExpression jsonQueryExpression
+                        ? AddJsonProjection(jsonQueryExpression, jsonProjectionDeduplicationMap[index])
+                        : Constant(AddToProjection((SqlExpression)expression, projectionMember.Last?.Name));
+
+                index++;
             }
 
             _projectionMapping.Clear();
@@ -1194,6 +1276,80 @@ public sealed partial class SelectExpression : TableExpressionBase
 
             return shaperExpression;
         }
+
+        static Dictionary<int, JsonScalarExpression> BuildJsonProjectionDeduplicationMap(IEnumerable<Expression> projections)
+        {
+            var deduplicationMap = new Dictionary<int, JsonScalarExpression>();
+            if (projections.Count() > 0)
+            {
+                var ordered = projections
+                    .Select((x, i) => new { x, i })
+                    .Where(x => x.x is JsonQueryExpression)
+                    .Select(x => new { Expression = (JsonQueryExpression)x.x, Index = x.i })
+                    .OrderBy(x => $"{x.Expression.JsonColumn.TableAlias}.{x.Expression.JsonColumn.Name}")
+                    .ThenBy(x => x.Expression.JsonPath.Count);
+
+                var needed = new List<JsonScalarExpression>();
+                foreach (var orderedElement in ordered)
+                {
+                    var match = needed.FirstOrDefault(x => JsonEntityContainedIn(x, orderedElement.Expression));
+                    JsonScalarExpression jsonScalarExpression;
+                    if (match == null)
+                    {
+                        jsonScalarExpression = match ?? new JsonScalarExpression(
+                        orderedElement.Expression.JsonColumn,
+                        orderedElement.Expression.JsonColumn.Type,
+                        orderedElement.Expression.JsonColumn.TypeMapping!,
+                        orderedElement.Expression.JsonPath.ToList());
+
+                        needed.Add(jsonScalarExpression);
+                    }
+                    else
+                    {
+                        jsonScalarExpression = match;
+                    }
+
+                    deduplicationMap[orderedElement.Index] = jsonScalarExpression;
+                }
+            }
+
+            return deduplicationMap;
+        }
+
+
+        //static Dictionary<JsonScalarExpression, List<JsonQueryExpression>> BuildJsonProjectionDeduplicationMap(
+        //    IEnumerable<JsonQueryExpression> projections)
+        //{
+        //    var deduplicationMap = new Dictionary<JsonScalarExpression, List<JsonQueryExpression>>();
+        //    if (projections.Count() > 0)
+        //    {
+        //        var ordered = projections
+        //            .OfType<JsonQueryExpression>()
+        //            .OrderBy(x => $"{x.JsonColumn.TableAlias}.{x.JsonColumn.Name}")
+        //            .ThenBy(x => x.JsonPath.Count);
+
+        //        foreach (var orderedElement in ordered)
+        //        {
+        //            var match = deduplicationMap.FirstOrDefault(x => JsonEntityContainedIn(x.Key, orderedElement));
+        //            if (match.Key == null)
+        //            {
+        //                var jsonScalarExpression = new JsonScalarExpression(
+        //                    orderedElement.JsonColumn,
+        //                    orderedElement.JsonColumn.Type,
+        //                    orderedElement.JsonColumn.TypeMapping!,
+        //                    orderedElement.JsonPath.ToList());
+
+        //                deduplicationMap[jsonScalarExpression] = new List<JsonQueryExpression> { orderedElement };
+        //            }
+        //            else
+        //            {
+        //                match.Value.Add(orderedElement);
+        //            }
+        //        }
+        //    }
+
+        //    return deduplicationMap;
+        //}
 
         ConstantExpression AddEntityProjection(EntityProjectionExpression entityProjectionExpression)
         {
@@ -1210,6 +1366,77 @@ public sealed partial class SelectExpression : TableExpressionBase
 
             return Constant(dictionary);
         }
+
+        ConstantExpression AddJsonProjection(JsonQueryExpression jsonQueryExpression, JsonScalarExpression jsonScalarToAdd)
+        {
+            var additionalPath = new string[0];
+
+            additionalPath = jsonQueryExpression.JsonPath.Skip(jsonScalarToAdd.JsonPath.Count).ToArray();
+            var jsonColumnIndex = AddToProjection(jsonScalarToAdd);
+            var dictionary = new Dictionary<IProperty, int>();
+
+            var keyProperties = jsonQueryExpression.EntityType.FindPrimaryKey()!.Properties;
+            var keyPropertiesCount = jsonQueryExpression.Navigation.IsCollection
+                ? keyProperties.Count - 1
+                : keyProperties.Count;
+
+            for (var i = 0; i < keyPropertiesCount; i++)
+            {
+                var keyProperty = keyProperties[i];
+                var keyColumn = jsonQueryExpression.BindProperty(keyProperty);
+                dictionary[keyProperty] = AddToProjection(keyColumn);
+            }
+
+            return Constant((jsonColumnIndex, dictionary, additionalPath));
+        }
+
+
+        //ConstantExpression AddJsonProjection(
+        //    JsonQueryExpression jsonQueryExpression,
+        //    Dictionary<JsonScalarExpression, List<JsonQueryExpression>> jsonProjectionDeduduplicationMap)
+        //{
+        //    var additionalPath = new string[0];
+
+        //    var jsonScalarToAdd = jsonProjectionDeduduplicationMap
+        //        .Where(x => x.Key.JsonColumn == jsonQueryExpression.JsonColumn && x.Value.Any(xx => xx.JsonPath.SequenceEqual(jsonQueryExpression.JsonPath)))
+        //        .Single().Key;
+
+        //    additionalPath = jsonQueryExpression.JsonPath.Skip(jsonScalarToAdd.JsonPath.Count).ToArray();
+        //    var jsonColumnIndex = AddToProjection(jsonScalarToAdd);
+        //    var dictionary = new Dictionary<IProperty, int>();
+
+        //    var keyProperties = jsonQueryExpression.EntityType.FindPrimaryKey()!.Properties;
+        //    var keyPropertiesCount = jsonQueryExpression.Navigation.IsCollection
+        //        ? keyProperties.Count - 1
+        //        : keyProperties.Count;
+
+        //    for (var i = 0; i < keyPropertiesCount; i++)
+        //    {
+        //        var keyProperty = keyProperties[i];
+        //        var keyColumn = jsonQueryExpression.BindProperty(keyProperty);
+        //        dictionary[keyProperty] = AddToProjection(keyColumn);
+        //    }
+
+        //    return Constant((jsonColumnIndex, dictionary, additionalPath));
+        //}
+
+        static bool JsonEntityContainedIn(JsonScalarExpression sourceExpression, JsonQueryExpression targetExpression)
+        {
+            if (sourceExpression.JsonColumn != targetExpression.JsonColumn)
+            {
+                return false;
+            }
+
+            var sourcePath = sourceExpression.JsonPath;
+            var targetPath = targetExpression.JsonPath;
+
+            if (targetPath.Count < sourcePath.Count)
+            {
+                return false;
+            }
+
+            return sourcePath.SequenceEqual(targetPath.Take(sourcePath.Count));
+        }
     }
 
     /// <summary>
@@ -1223,7 +1450,8 @@ public sealed partial class SelectExpression : TableExpressionBase
         {
             Check.DebugAssert(
                 expression is SqlExpression
-                || expression is EntityProjectionExpression,
+                || expression is EntityProjectionExpression
+                || expression is JsonQueryExpression,
                 "Invalid operation in the projection.");
             _projectionMapping[projectionMember] = expression;
         }
@@ -1243,7 +1471,10 @@ public sealed partial class SelectExpression : TableExpressionBase
             Check.DebugAssert(
                 expression is SqlExpression
                 || expression is EntityProjectionExpression
-                || expression is ShapedQueryExpression,
+                || expression is ShapedQueryExpression
+                || expression is JsonQueryExpression,
+//                || expression is JsonProjectionExpression
+                //|| expression is JsonCollectionResultExpression,
                 "Invalid operation in the projection.");
             _clientProjections.Add(expression);
             _aliasForClientProjections.Add(null);
@@ -2955,6 +3186,10 @@ public sealed partial class SelectExpression : TableExpressionBase
                 {
                     _clientProjections[i] = LiftEntityProjectionFromSubquery(entityProjection);
                 }
+                else if (item is JsonQueryExpression jsonQueryExpression)
+                {
+                    _clientProjections[i] = LiftJsonQueryFromSubquery(jsonQueryExpression);
+                }
                 else if (item is SqlExpression sqlExpression)
                 {
                     var alias = _aliasForClientProjections[i];
@@ -2982,6 +3217,10 @@ public sealed partial class SelectExpression : TableExpressionBase
                 if (expression is EntityProjectionExpression entityProjection)
                 {
                     _projectionMapping[projectionMember] = LiftEntityProjectionFromSubquery(entityProjection);
+                }
+                else if (expression is JsonQueryExpression jsonQueryExpression)
+                {
+                    _projectionMapping[projectionMember] = LiftJsonQueryFromSubquery(jsonQueryExpression);
                 }
                 else
                 {
@@ -3112,14 +3351,51 @@ public sealed partial class SelectExpression : TableExpressionBase
                 var boundEntityShaperExpression = entityProjection.BindNavigation(navigation);
                 if (boundEntityShaperExpression != null)
                 {
-                    var innerEntityProjection = (EntityProjectionExpression)boundEntityShaperExpression.ValueBufferExpression;
-                    var newInnerEntityProjection = LiftEntityProjectionFromSubquery(innerEntityProjection);
-                    boundEntityShaperExpression = boundEntityShaperExpression.Update(newInnerEntityProjection);
+                    var newValueBufferExpression = boundEntityShaperExpression.ValueBufferExpression is EntityProjectionExpression innerEntityProjection
+                        ? (Expression)LiftEntityProjectionFromSubquery(innerEntityProjection)
+                        : LiftJsonQueryFromSubquery((JsonQueryExpression)boundEntityShaperExpression.ValueBufferExpression);
+
+                    boundEntityShaperExpression = boundEntityShaperExpression.Update(newValueBufferExpression);
                     newEntityProjection.AddNavigationBinding(navigation, boundEntityShaperExpression);
                 }
             }
 
             return newEntityProjection;
+        }
+
+        JsonQueryExpression LiftJsonQueryFromSubquery(JsonQueryExpression jsonQueryExpression)
+        {
+            // TODO: type mapping should depend on json path or not?
+            var jsonScalarExpression = new JsonScalarExpression(
+                jsonQueryExpression.JsonColumn,
+                jsonQueryExpression.JsonColumn.TypeMapping!.ClrType,
+                jsonQueryExpression.JsonColumn.TypeMapping,
+                jsonQueryExpression.JsonPath.ToList());
+
+            var newJsonColumn = subquery.GenerateOuterColumn(subqueryTableReferenceExpression, jsonScalarExpression);
+
+            var newKeyPropertyMap = new Dictionary<IProperty, ColumnExpression>();
+
+            var keyProperties = jsonQueryExpression.EntityType.FindPrimaryKey()!.Properties;
+            var keyPropertyCount = jsonQueryExpression.Navigation.IsCollection
+                ? keyProperties.Count - 1
+                : keyProperties.Count;
+
+            for (var i = 0; i < keyPropertyCount; i++)
+            {
+                var keyProperty = keyProperties[i];
+                var innerColumn = jsonQueryExpression.BindProperty(keyProperty);
+                var outerColumn = subquery.GenerateOuterColumn(subqueryTableReferenceExpression, innerColumn);
+                projectionMap[innerColumn] = outerColumn;
+                newKeyPropertyMap[keyProperty] = outerColumn;
+            }
+
+            // clear up the json path - we start from empty path after pushdown
+            return new JsonQueryExpression(
+                jsonQueryExpression.EntityType,
+                newJsonColumn,
+                jsonQueryExpression.Navigation,
+                newKeyPropertyMap);
         }
     }
 

@@ -33,8 +33,9 @@ public static class RelationalForeignKeyExtensions
             : duplicateForeignKey.PrincipalKey.DeclaringEntityType;
         var duplicatePrincipalTable = StoreObjectIdentifier.Create(duplicatePrincipalType, storeObject.StoreObjectType);
 
-        var columnNames = foreignKey.Properties.GetColumnNames(storeObject);
-        var duplicateColumnNames = duplicateForeignKey.Properties.GetColumnNames(storeObject);
+        var columnNames = foreignKey.GetMappedKeyProperties().GetColumnNames(storeObject);
+        var duplicateColumnNames = duplicateForeignKey.GetMappedKeyProperties().GetColumnNames(storeObject);
+
         if (columnNames is null
             || duplicateColumnNames is null)
         {
@@ -59,9 +60,9 @@ public static class RelationalForeignKeyExtensions
         if (principalTable is null
             || duplicatePrincipalTable is null
             || principalTable != duplicatePrincipalTable
-            || !(foreignKey.PrincipalKey.Properties.GetColumnNames(principalTable.Value)
+            || !(foreignKey.PrincipalKey.GetMappedKeyProperties().GetColumnNames(principalTable.Value)
                 is IReadOnlyList<string> principalColumns)
-            || !(duplicateForeignKey.PrincipalKey.Properties.GetColumnNames(principalTable.Value)
+            || !(duplicateForeignKey.GetMappedKeyProperties().GetColumnNames(principalTable.Value)
                 is IReadOnlyList<string> duplicatePrincipalColumns))
         {
             if (shouldThrow)
@@ -160,5 +161,31 @@ public static class RelationalForeignKeyExtensions
         }
 
         return true;
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public static IEnumerable<IReadOnlyProperty> GetMappedKeyProperties(this IReadOnlyForeignKey key)
+    {
+        var count = key.Properties.Count;
+        if (key.DeclaringEntityType.IsMappedToJson())
+        {
+            // for json collections we need to filter out the ordinal key as it's not mapped to any column
+            // there could be multiple of these in deeply nested structures,
+            // so we traverse to the outermost owner to see how many mapped keys there are
+            var currentEntity = key.DeclaringEntityType;
+            while (currentEntity.IsOwned())
+            {
+                currentEntity = currentEntity.FindOwnership()!.PrincipalEntityType;
+            }
+
+            count = currentEntity.FindPrimaryKey()!.Properties.Count;
+        }
+
+        return key.Properties.Take(count);
     }
 }

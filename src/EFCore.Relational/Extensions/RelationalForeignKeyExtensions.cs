@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Text;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 // ReSharper disable once CheckNamespace
 namespace Microsoft.EntityFrameworkCore;
@@ -27,6 +28,13 @@ public static class RelationalForeignKeyExtensions
             return null;
         }
 
+        // don't create constraint for non-unique json ownership FKs
+        // so we don't try to do unnecessary validation on them
+        if (foreignKey.IsOwnership && foreignKey.DeclaringEntityType.IsMappedToJson() && !foreignKey.IsUnique)
+        {
+            return null;
+        }
+
         var annotation = foreignKey.FindAnnotation(RelationalAnnotationNames.Name);
         return annotation != null
             ? (string?)annotation.Value
@@ -47,6 +55,13 @@ public static class RelationalForeignKeyExtensions
     {
         if (storeObject.StoreObjectType != StoreObjectType.Table
             || principalStoreObject.StoreObjectType != StoreObjectType.Table)
+        {
+            return null;
+        }
+
+        // don't create constraint for non-unique json ownership FKs
+        // so we don't try to do unnecessary validation on them
+        if (foreignKey.IsOwnership && foreignKey.DeclaringEntityType.IsMappedToJson() && !foreignKey.IsUnique)
         {
             return null;
         }
@@ -108,8 +123,10 @@ public static class RelationalForeignKeyExtensions
             return null;
         }
 
-        var propertyNames = foreignKey.Properties.GetColumnNames(storeObject);
-        var principalPropertyNames = foreignKey.PrincipalKey.Properties.GetColumnNames(principalStoreObject);
+        var propertyNames = foreignKey.GetMappedKeyProperties().GetColumnNames(storeObject);
+
+        var principalPropertyNames = foreignKey.PrincipalKey.GetMappedKeyProperties().GetColumnNames(principalStoreObject);
+
         if (propertyNames == null
             || principalPropertyNames == null)
         {
@@ -130,8 +147,9 @@ public static class RelationalForeignKeyExtensions
                 if (principalStoreObject.Name == otherForeignKey.PrincipalEntityType.GetTableName()
                     && principalStoreObject.Schema == otherForeignKey.PrincipalEntityType.GetSchema())
                 {
-                    var otherColumnNames = otherForeignKey.Properties.GetColumnNames(storeObject);
-                    var otherPrincipalColumnNames = otherForeignKey.PrincipalKey.Properties.GetColumnNames(principalStoreObject);
+                    var otherColumnNames = otherForeignKey.GetMappedKeyProperties().GetColumnNames(storeObject);
+                    var otherPrincipalColumnNames = otherForeignKey.PrincipalKey.GetMappedKeyProperties().GetColumnNames(principalStoreObject);
+
                     if (otherColumnNames != null
                         && otherPrincipalColumnNames != null
                         && propertyNames.SequenceEqual(otherColumnNames)
