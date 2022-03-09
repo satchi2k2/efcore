@@ -986,4 +986,53 @@ public static class RelationalPropertyBuilderExtensions
         string? collation,
         bool fromDataAnnotation = false)
         => propertyBuilder.CanSetAnnotation(RelationalAnnotationNames.Collation, collation, fromDataAnnotation);
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static PropertyBuilder HasJsonElementName(
+        this PropertyBuilder propertyBuilder,
+        string? name)
+    {
+        Check.NullButNotEmpty(name, nameof(name));
+
+        propertyBuilder.Metadata.SetJsonElementName(name);
+
+        return propertyBuilder;
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static PropertyBuilder<TProperty> HasJsonElementName<TProperty>(
+        this PropertyBuilder<TProperty> propertyBuilder,
+        string? name)
+        => (PropertyBuilder<TProperty>)HasJsonElementName((PropertyBuilder)propertyBuilder, name);
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static IConventionPropertyBuilder? HasJsonElementName(
+        this IConventionPropertyBuilder propertyBuilder,
+        string? name,
+        bool fromDataAnnotation = false)
+    {
+        if (!propertyBuilder.CanSetJsonElementName(name, fromDataAnnotation))
+        {
+            return null;
+        }
+
+        propertyBuilder.Metadata.SetJsonElementName(name, fromDataAnnotation);
+
+        return propertyBuilder;
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static bool CanSetJsonElementName(
+        this IConventionPropertyBuilder propertyBuilder,
+        string? name,
+        bool fromDataAnnotation = false)
+        => propertyBuilder.CanSetAnnotation(RelationalAnnotationNames.JsonElementName, name, fromDataAnnotation);
 }
