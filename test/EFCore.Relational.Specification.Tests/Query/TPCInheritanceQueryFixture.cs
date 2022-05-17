@@ -1,17 +1,21 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.BulkUpdates;
 using Microsoft.EntityFrameworkCore.TestModels.InheritanceModel;
 
 namespace Microsoft.EntityFrameworkCore.Query;
 
-public abstract class TPCInheritanceQueryFixture : InheritanceQueryFixtureBase
+public abstract class TPCInheritanceQueryFixture : InheritanceQueryFixtureBase, IBulkUpdatesFixtureBase
 {
     protected override string StoreName
         => "TPCInheritanceTest";
 
     public TestSqlLoggerFactory TestSqlLoggerFactory
         => (TestSqlLoggerFactory)ListLoggerFactory;
+
+    public void UseTransaction(DatabaseFacade facade, IDbContextTransaction transaction)
+        => facade.UseTransaction(transaction.GetDbTransaction());
 
     protected override bool HasDiscriminator
         => false;

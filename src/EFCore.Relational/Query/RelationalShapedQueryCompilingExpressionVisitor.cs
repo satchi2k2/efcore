@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 
@@ -40,6 +41,108 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor : ShapedQue
     ///     Relational provider-specific dependencies for this service.
     /// </summary>
     protected virtual RelationalShapedQueryCompilingExpressionVisitorDependencies RelationalDependencies { get; }
+
+    /// <inheritdoc />
+    protected override Expression VisitExtension(Expression extensionExpression)
+        => extensionExpression is NonQueryExpression nonQueryExpression
+            ? VisitNonQuery(nonQueryExpression)
+            : base.VisitExtension(extensionExpression);
+
+    /// <summary>
+    ///     Visits the given <paramref name="nonQueryExpression" />, returning an expression that when compiled, can execute the non-
+    ///     query operation against the database.
+    /// </summary>
+    /// <param name="nonQueryExpression">The expression to be compiled.</param>
+    /// <returns>An expression which executes a non-query operation.</returns>
+    protected virtual Expression VisitNonQuery(NonQueryExpression nonQueryExpression)
+    {
+        var relationalCommandCache = new RelationalCommandCache(
+            Dependencies.MemoryCache,
+            RelationalDependencies.QuerySqlGeneratorFactory,
+            RelationalDependencies.RelationalParameterBasedSqlProcessorFactory,
+            nonQueryExpression.DeleteExpression,
+            _useRelationalNulls);
+
+        return Expression.Call(
+            QueryCompilationContext.IsAsync ? NonQueryAsyncMethodInfo : NonQueryMethodInfo,
+            Expression.Convert(QueryCompilationContext.QueryContextParameter, typeof(RelationalQueryContext)),
+            Expression.Constant(relationalCommandCache),
+            Expression.Constant(_contextType));
+    }
+
+    private static readonly MethodInfo NonQueryMethodInfo
+        = typeof(RelationalShapedQueryCompilingExpressionVisitor).GetTypeInfo()
+            .GetDeclaredMethods(nameof(NonQueryResult))
+            .Single(mi => mi.GetParameters().Length == 3);
+
+    private static readonly MethodInfo NonQueryAsyncMethodInfo
+        = typeof(RelationalShapedQueryCompilingExpressionVisitor).GetTypeInfo()
+            .GetDeclaredMethods(nameof(NonQueryResultAsync))
+            .Single(mi => mi.GetParameters().Length == 3);
+
+    private static int NonQueryResult(
+        RelationalQueryContext relationalQueryContext,
+        RelationalCommandCache relationalCommandCache,
+        Type contextType)
+    {
+        try
+        {
+            var relationalCommand = relationalCommandCache.RentAndPopulateRelationalCommand(relationalQueryContext);
+            return relationalCommand.ExecuteNonQuery(new RelationalCommandParameterObject(
+                relationalQueryContext.Connection,
+                relationalQueryContext.ParameterValues,
+                null,
+                relationalQueryContext.Context,
+                relationalQueryContext.CommandLogger,
+                CommandSource.LinqQuery));
+        }
+        catch (Exception exception)
+        {
+            if (relationalQueryContext.ExceptionDetector.IsCancellation(exception))
+            {
+                relationalQueryContext.QueryLogger.QueryCanceled(contextType);
+            }
+            else
+            {
+                relationalQueryContext.QueryLogger.QueryIterationFailed(contextType, exception);
+            }
+
+            throw;
+        }
+    }
+
+    private static Task<int> NonQueryResultAsync(
+        RelationalQueryContext relationalQueryContext,
+        RelationalCommandCache relationalCommandCache,
+        Type contextType)
+    {
+        try
+        {
+            var relationalCommand = relationalCommandCache.RentAndPopulateRelationalCommand(relationalQueryContext);
+            return relationalCommand.ExecuteNonQueryAsync(new RelationalCommandParameterObject(
+                relationalQueryContext.Connection,
+                relationalQueryContext.ParameterValues,
+                null,
+                relationalQueryContext.Context,
+                relationalQueryContext.CommandLogger,
+                CommandSource.LinqQuery),
+                relationalQueryContext.CancellationToken);
+        }
+        catch (Exception exception)
+        {
+            if (relationalQueryContext.ExceptionDetector.IsCancellation(exception))
+            {
+                relationalQueryContext.QueryLogger.QueryCanceled(contextType);
+            }
+            else
+            {
+                relationalQueryContext.QueryLogger.QueryIterationFailed(contextType, exception);
+            }
+
+            throw;
+        }
+    }
+
 
     /// <inheritdoc />
     protected override Expression VisitShapedQuery(ShapedQueryExpression shapedQueryExpression)

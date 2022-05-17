@@ -48,6 +48,62 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => GetString("BadSequenceType");
 
         /// <summary>
+        ///     The bulk operation '{bulkOperation}' is being applied on the table '{tableName}' which contains data for multiple entity types. Applying this delete operation will also delete data for other entity type(s) hence it is not supported.
+        /// </summary>
+        public static string BulkDeleteOnTableSplitting(object? bulkOperation, object? tableName)
+            => string.Format(
+                GetString("BulkDeleteOnTableSplitting", nameof(bulkOperation), nameof(tableName)),
+                bulkOperation, tableName);
+
+        /// <summary>
+        ///     The bulk operation '{bulkOperation}' is being applied on entity type '{entityType}' is using entity splitting. Bulk operations on entity types using entity splitting is not allowed.
+        /// </summary>
+        public static string BulkOperationOnEntitySplitting(object? bulkOperation, object? entityType)
+            => string.Format(
+                GetString("BulkOperationOnEntitySplitting", nameof(bulkOperation), nameof(entityType)),
+                bulkOperation, entityType);
+
+        /// <summary>
+        ///     The bulk operation '{bulkOperation}' cannot be performed on keyless entity type '{entityType}', since it contains an operator not natively supported by the database provider.
+        /// </summary>
+        public static string BulkOperationOnKeylessEntityTypeWithUnsupportedOperator(object? bulkOperation, object? entityType)
+            => string.Format(
+                GetString("BulkOperationOnKeylessEntityTypeWithUnsupportedOperator", nameof(bulkOperation), nameof(entityType)),
+                bulkOperation, entityType);
+
+        /// <summary>
+        ///     The bulk operation '{bulkOperation}' requires an entity type which corresponds to the database table to be modified. The current operation is being applied on a non-entity projection. Remove any projection to non-entity type.
+        /// </summary>
+        public static string BulkOperationOnNonEntityType(object? bulkOperation)
+            => string.Format(
+                GetString("BulkOperationOnNonEntityType", nameof(bulkOperation)),
+                bulkOperation);
+
+        /// <summary>
+        ///     The bulk operation '{bulkOperation}' is being applied on entity type '{entityType}' which is using TPC mapping strategy and is not leaf type. Bulk operations on entity type participating TPC except for leaf type is not allowed.
+        /// </summary>
+        public static string BulkOperationOnTPC(object? bulkOperation, object? entityType)
+            => string.Format(
+                GetString("BulkOperationOnTPC", nameof(bulkOperation), nameof(entityType)),
+                bulkOperation, entityType);
+
+        /// <summary>
+        ///     The bulk operation '{bulkOperation}' is being applied on entity type '{entityType}' which is using TPT mapping strategy. Bulk operations on hierarchy mapped as TPT is not allowed.
+        /// </summary>
+        public static string BulkOperationOnTPT(object? bulkOperation, object? entityType)
+            => string.Format(
+                GetString("BulkOperationOnTPT", nameof(bulkOperation), nameof(entityType)),
+                bulkOperation, entityType);
+
+        /// <summary>
+        ///     The bulk operation '{bulkOperation}' contains a select expression feature that isn't supported in the query SQL generator, but has been declared as supported by provider during translation phase. This is an issue in provider.
+        /// </summary>
+        public static string BulkOperationWithUnsupportedOperatorInSqlGeneration(object? bulkOperation)
+            => string.Format(
+                GetString("BulkOperationWithUnsupportedOperatorInSqlGeneration", nameof(bulkOperation)),
+                bulkOperation);
+
+        /// <summary>
         ///     The instance of DbConnection is currently in use. The connection can only be changed when the existing connection is not being used.
         /// </summary>
         public static string CannotChangeWhenOpen
@@ -1058,6 +1114,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         /// </summary>
         public static string NoneRelationalTypeMappingOnARelationalTypeMappingSource
             => GetString("NoneRelationalTypeMappingOnARelationalTypeMappingSource");
+
+        /// <summary>
+        ///     The LINQ expression '{expression}' could not be translated. Additional information: {details} See https://go.microsoft.com/fwlink/?linkid=2101038 for more information.
+        /// </summary>
+        public static string NonQueryTranslationFailedWithDetails(object? expression, object? details)
+            => string.Format(
+                GetString("NonQueryTranslationFailedWithDetails", nameof(expression), nameof(details)),
+                expression, details);
 
         /// <summary>
         ///     Cannot set 'IsNullable' on DbFunction '{functionName}' since the function does not represent a scalar function.
