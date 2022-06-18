@@ -1253,10 +1253,6 @@ public class QuerySqlGenerator : SqlExpressionVisitor
     }
 
     /// <inheritdoc />
-    protected override Expression VisitJsonPathExpression(JsonPathExpression jsonPathExpression)
-        => throw new InvalidOperationException("This node should be handled by provider-specific sql generator.");
-
-    /// <inheritdoc />
     protected override Expression VisitJsonScalarExpression(JsonScalarExpression jsonScalarExpression)
         => throw new InvalidOperationException("This node should be handled by provider-specific sql generator.");
 }

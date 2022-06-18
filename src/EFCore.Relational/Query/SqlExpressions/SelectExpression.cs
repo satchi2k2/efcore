@@ -1366,12 +1366,20 @@ public sealed partial class SelectExpression : TableExpressionBase
             Dictionary<JsonScalarExpression, List<JsonQueryExpression>>? jsonClientProjectionDeduduplicationMap)
         {
             var additionalPath = new string[0];
+
+
             var jsonScalarToAdd = jsonClientProjectionDeduduplicationMap != null
                 ? jsonClientProjectionDeduduplicationMap
-                    .Where(x => x.Key.JsonColumn == jsonQueryExpression.JsonColumn && x.Key.JsonPath.SequenceEqual(jsonQueryExpression.JsonPath))
+                    .Where(x => x.Key.JsonColumn == jsonQueryExpression.JsonColumn && x.Key.JsonPath.SequenceEqual(jsonQueryExpression.JsonPath.Take(x.Key.JsonPath.Count)))
                     .FirstOrDefault().Key
                 : null;
 
+
+            //var jsonScalarToAdd = jsonClientProjectionDeduduplicationMap != null
+            //    ? jsonClientProjectionDeduduplicationMap
+            //        .Where(x => x.Key.JsonColumn == jsonQueryExpression.JsonColumn && x.Key.JsonPath.SequenceEqual(jsonQueryExpression.JsonPath))
+            //        .FirstOrDefault().Key
+            //    : null;
 
             // TODO: we should never need to do that, all 
             if (jsonScalarToAdd == null)

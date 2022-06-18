@@ -10725,15 +10725,12 @@ WHERE [e].[TimeSpan] = @__parameter_0");
             //var query10 = ctx.MyEntities.Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf).Select(x => x.SomethingSomething).ToList();
 
             //var query11 = ctx.MyEntities.Select(x => x.OwnedReferenceSharedRoot).Take(10).Select(x => x.OwnedReferenceSharedBranch).Take(10).Select(x => x.OwnedReferenceSharedLeaf).AsNoTracking().ToList();
-            var query12 = ctx.MyEntities.Select(x => x.OwnedReferenceSharedRoot).Take(10).Distinct().Select(x => x.OwnedReferenceSharedBranch).Take(10).Distinct().Select(x => x.OwnedReferenceSharedLeaf).AsNoTracking().ToList();
+            //var query12 = ctx.MyEntities.Select(x => x.OwnedReferenceSharedRoot).Take(10).Distinct().Select(x => x.OwnedReferenceSharedBranch).Take(10).Distinct().Select(x => x.OwnedReferenceSharedLeaf).AsNoTracking().ToList();
 
 
+            //var query21 = ctx.MyEntities.Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch).Take(3).Distinct().Select(x => x.OwnedReferenceSharedLeaf).AsNoTracking().ToList();
 
-
-            //var query21 = ctx.MyEntities.Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch).Take(3).Distinct().Select(x => x.OwnedReferenceSharedLeaf).ToList();
-
-
-            //var query22 = ctx.MyEntities.Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf).Take(3).Distinct().Select(x => x.SomethingSomething).ToList();
+            var query22 = ctx.MyEntities.Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf).Take(3).Distinct().Select(x => x.SomethingSomething).ToList();
 
         }
     }

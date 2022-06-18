@@ -1288,15 +1288,38 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             var keyValuesInitialize = Expression.NewArrayInit(typeof(object), keyValues);
             var keyValuesAssignment = Expression.Assign(keyValuesParameter, keyValuesInitialize);
 
+            var jsonTypeMapping = (RelationalTypeMapping)entityType.FindRuntimeAnnotationValue(RelationalAnnotationNames.MapToJsonTypeMapping)!;
+
+            var jsonElementValueExpression = CreateGetValueExpression(
+                _dataReaderParameter,
+                jsonColumnProjectionIndex,
+                nullable: true,
+                jsonTypeMapping,
+                jsonTypeMapping.ClrType,
+                property: null);
+
+
+            gdfgdfgdg
+
+
             var jsonElementAssignment = Expression.Assign(
                 jsonElementVariable,
+
                 Expression.Call(
                     null,
                     ExtractJsonElementMethod,
-                    _dataReaderParameter,
-                    Expression.Constant(jsonColumnProjectionIndex),
-                    Expression.Constant(additionalPath)));
 
+
+                jsonElementValueExpression);
+
+            //var jsonElementAssignment = Expression.Assign(
+            //    jsonElementVariable,
+            //    Expression.Call(
+            //        null,
+            //        ExtractJsonElementMethod,
+            //        _dataReaderParameter,
+            //        Expression.Constant(jsonColumnProjectionIndex),
+            //        Expression.Constant(additionalPath)));
 
             return (jsonElementVariable, keyValuesParameter, jsonElementAssignment, keyValuesAssignment);
         }
@@ -1359,7 +1382,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             IPropertyBase? property = null)
         {
             Check.DebugAssert(
-                property != null || type.IsNullableType(), "Must read nullable value from database if property is not specified.");
+                property != null || type.IsNullableType() || typeMapping is JsonTypeMapping, "Must read nullable value from database if property is not specified.");
 
             var getMethod = typeMapping.GetDataReaderMethod();
 
@@ -1527,6 +1550,11 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
 
         private static JsonElement ExtractJsonElement(DbDataReader dataReader, int index, string[] additionalPath)
         {
+            var r1 = dataReader.GetValue(0);
+            var r2 = dataReader.GetValue(1);
+            var r3 = dataReader.GetValue(2);
+            var r4 = dataReader.GetValue(3);
+
             var jsonString = dataReader.GetString(index);
             var jsonDocument = JsonDocument.Parse(jsonString);
             var jsonElement = jsonDocument.RootElement;

@@ -173,7 +173,6 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
     /// <inheritdoc />
     protected override Expression VisitJsonScalarExpression(JsonScalarExpression jsonScalarExpression)
     {
-        // TODO: do this properly, i.e. using a flag or something?
         if (jsonScalarExpression.Type == typeof(JsonElement))
         {
             Sql.Append("JSON_QUERY(");
@@ -207,45 +206,6 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
         }
 
         return jsonScalarExpression;
-    }
-
-    /// <inheritdoc />
-    protected override Expression VisitJsonPathExpression(JsonPathExpression jsonPathExpression)
-    {
-        // TODO: do this properly, i.e. using a flag or something?
-        if (jsonPathExpression.Type == typeof(JsonElement))
-        {
-            Sql.Append("JSON_QUERY(");
-        }
-        else
-        {
-            Sql.Append("CAST(JSON_VALUE(");
-        }
-
-        Visit(jsonPathExpression.JsonColumn);
-        Sql.Append(",");
-
-        var jsonPath = string.Join(".", jsonPathExpression.JsonPath);
-        if (!string.IsNullOrEmpty(jsonPath))
-        {
-            jsonPath = "$." + jsonPath;
-        }
-        else
-        {
-            jsonPath = "$";
-        }
-
-        Sql.Append("'" + jsonPath + "'");
-        Sql.Append(")");
-
-        if (jsonPathExpression.Type != typeof(JsonElement))
-        {
-            Sql.Append(" AS ");
-            Sql.Append(jsonPathExpression.TypeMapping!.StoreType);
-            Sql.Append(")");
-        }
-
-        return jsonPathExpression;
     }
 
     /// <inheritdoc />
