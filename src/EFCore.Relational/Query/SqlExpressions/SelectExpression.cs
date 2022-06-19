@@ -1367,21 +1367,13 @@ public sealed partial class SelectExpression : TableExpressionBase
         {
             var additionalPath = new string[0];
 
-
             var jsonScalarToAdd = jsonClientProjectionDeduduplicationMap != null
                 ? jsonClientProjectionDeduduplicationMap
-                    .Where(x => x.Key.JsonColumn == jsonQueryExpression.JsonColumn && x.Key.JsonPath.SequenceEqual(jsonQueryExpression.JsonPath.Take(x.Key.JsonPath.Count)))
-                    .FirstOrDefault().Key
+                    .Where(x => x.Key.JsonColumn == jsonQueryExpression.JsonColumn && x.Value.Any(xx => xx.JsonPath.SequenceEqual(jsonQueryExpression.JsonPath)))
+                    .Single().Key
                 : null;
 
-
-            //var jsonScalarToAdd = jsonClientProjectionDeduduplicationMap != null
-            //    ? jsonClientProjectionDeduduplicationMap
-            //        .Where(x => x.Key.JsonColumn == jsonQueryExpression.JsonColumn && x.Key.JsonPath.SequenceEqual(jsonQueryExpression.JsonPath))
-            //        .FirstOrDefault().Key
-            //    : null;
-
-            // TODO: we should never need to do that, all 
+            // TODO: need deduplication map to always be computed, then we can skip this, as we will always find a match
             if (jsonScalarToAdd == null)
             {
                 jsonScalarToAdd = new JsonScalarExpression(

@@ -1298,18 +1298,17 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                 jsonTypeMapping.ClrType,
                 property: null);
 
-
-            gdfgdfgdg
-
+            if (additionalPath.Length > 0)
+            {
+                jsonElementValueExpression = Expression.Call(
+                    null,
+                    ExtractJsonElementMethod,
+                    jsonElementValueExpression,
+                    Expression.Constant(additionalPath));
+            }
 
             var jsonElementAssignment = Expression.Assign(
                 jsonElementVariable,
-
-                Expression.Call(
-                    null,
-                    ExtractJsonElementMethod,
-
-
                 jsonElementValueExpression);
 
             //var jsonElementAssignment = Expression.Assign(
@@ -1548,21 +1547,38 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             throw new InvalidOperationException(message, exception);
         }
 
-        private static JsonElement ExtractJsonElement(DbDataReader dataReader, int index, string[] additionalPath)
+        //private static JsonElement ExtractJsonElement(DbDataReader dataReader, int index, string[] additionalPath)
+        //{
+        //    var jsonString = dataReader.GetString(index);
+        //    var jsonDocument = JsonDocument.Parse(jsonString);
+        //    var jsonElement = jsonDocument.RootElement;
+
+        //    foreach (var pathElement in additionalPath)
+        //    {
+        //        jsonElement = jsonElement.GetProperty(pathElement);
+        //    }
+
+        //    return jsonElement;
+        //}
+
+        private static JsonElement ExtractJsonElement(JsonElement jsonElement, string[] additionalPath)
         {
-            var r1 = dataReader.GetValue(0);
-            var r2 = dataReader.GetValue(1);
-            var r3 = dataReader.GetValue(2);
-            var r4 = dataReader.GetValue(3);
-
-            var jsonString = dataReader.GetString(index);
-            var jsonDocument = JsonDocument.Parse(jsonString);
-            var jsonElement = jsonDocument.RootElement;
-
-            foreach (var pathElement in additionalPath)
+            if (additionalPath.Length > 0)
             {
-                jsonElement = jsonElement.GetProperty(pathElement);
+                foreach (var pathElement in additionalPath)
+                {
+                    jsonElement = jsonElement.GetProperty(pathElement);
+                }
             }
+
+            //var jsonString = dataReader.GetString(index);
+            //var jsonDocument = JsonDocument.Parse(jsonString);
+            //var jsonElement = jsonDocument.RootElement;
+
+            //foreach (var pathElement in additionalPath)
+            //{
+            //    jsonElement = jsonElement.GetProperty(pathElement);
+            //}
 
             return jsonElement;
         }

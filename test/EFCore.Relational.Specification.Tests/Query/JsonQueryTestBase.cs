@@ -82,17 +82,15 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
             {
                 x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch,
                 x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf,
-                //x.OwnedReferenceSharedRoot.OwnedCollectionSharedBranch,
-                //x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething
-            }).AsNoTracking());
+                x.OwnedReferenceSharedRoot.OwnedCollectionSharedBranch,
+                x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething
+            }).AsNoTracking(),
 
-                    //var query08 = ctx.MyEntities.Select(x => new
-                    //{
-                    //    x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch,
-                    //    x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething
-                    //}).AsNoTracking().ToList();
-
-
-
-
+            elementAsserter: (e, a) =>
+            {
+                AssertEqual(e.OwnedReferenceSharedBranch, a.OwnedReferenceSharedBranch);
+                AssertEqual(e.OwnedReferenceSharedLeaf, a.OwnedReferenceSharedLeaf);
+                AssertCollection(e.OwnedCollectionSharedBranch, a.OwnedCollectionSharedBranch, ordered: true);
+                Assert.Equal(e.SomethingSomething, a.SomethingSomething);
+            });
 }

@@ -89,7 +89,8 @@ FROM [JsonBasicEntities] AS [j]");
         await base.Json_projection_with_deduplication(async);
 
         AssertSql(
-            @"");
+            @"SELECT JSON_QUERY([j].[json_reference_shared],'$.OwnedReferenceSharedBranch'), [j].[Id], JSON_QUERY([j].[json_reference_shared],'$.OwnedCollectionSharedBranch'), CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething') AS nvarchar(max))
+FROM [JsonBasicEntities] AS [j]");
     }
 
     private void AssertSql(params string[] expected)

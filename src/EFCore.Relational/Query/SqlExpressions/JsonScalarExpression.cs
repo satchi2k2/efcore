@@ -64,16 +64,23 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions
         {
             if (obj is JsonScalarExpression jsonScalarExpression)
             {
-                var result = true;
-                result = result && JsonColumn.Equals(jsonScalarExpression.JsonColumn);
-                result = result && JsonPath.Count == jsonScalarExpression.JsonPath.Count;
+                return JsonColumn.Equals(jsonScalarExpression.JsonColumn)
+                    && JsonPath.SequenceEqual(jsonScalarExpression.JsonPath);
 
-                if (result)
-                {
-                    result = result && JsonPath.Zip(jsonScalarExpression.JsonPath, (l, r) => l == r).All(x => true);
-                }
+                //var result = true;
+                //result = result && JsonColumn.Equals(jsonScalarExpression.JsonColumn);
+                //result = result && JsonPath.Count == jsonScalarExpression.JsonPath.Count;
 
-                return result;
+                //if (result)
+                //{
+                //    result = JsonPath.SequenceEqual(jsonScalarExpression.JsonPath)
+
+                //    var foo = JsonPath.Zip(jsonScalarExpression.JsonPath, (l, r) => l == r).ToList();
+
+                //    result = result && JsonPath.Zip(jsonScalarExpression.JsonPath, (l, r) => l == r).All(x => x == true);
+                //}
+
+                //return result;
             }
             else
             {
