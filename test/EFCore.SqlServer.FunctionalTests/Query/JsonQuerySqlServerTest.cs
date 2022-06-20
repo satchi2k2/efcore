@@ -93,6 +93,84 @@ FROM [JsonBasicEntities] AS [j]");
 FROM [JsonBasicEntities] AS [j]");
     }
 
+    public override async Task Json_property_in_predicate(bool async)
+    {
+        await base.Json_property_in_predicate(async);
+
+        AssertSql(
+            @"SELECT [j].[Id]
+FROM [JsonBasicEntities] AS [j]
+WHERE CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.Fraction') AS decimal(18,2)) < 20.5");
+    }
+
+    public override async Task Json_subquery_property_pushdown_length(bool async)
+    {
+        await base.Json_subquery_property_pushdown_length(async);
+
+        AssertSql(
+            @"@__p_0='3'
+
+SELECT CAST(LEN([t0].[c]) AS int)
+FROM (
+    SELECT DISTINCT [t].[c]
+    FROM (
+        SELECT TOP(@__p_0) CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething') AS nvarchar(max)) AS [c]
+        FROM [JsonBasicEntities] AS [j]
+        ORDER BY [j].[Id]
+    ) AS [t]
+) AS [t0]");
+    }
+
+    public override async Task Json_subquery_reference_pushdown_reference(bool async)
+    {
+        await base.Json_subquery_reference_pushdown_reference(async);
+
+        AssertSql(
+            @"@__p_0='10'
+
+SELECT JSON_QUERY([t0].[json_reference_shared],'$.OwnedReferenceSharedBranch'), [t0].[Id]
+FROM (
+    SELECT DISTINCT [t].[json_reference_shared], [t].[Id]
+    FROM (
+        SELECT TOP(@__p_0) [j].[json_reference_shared], [j].[Id]
+        FROM [JsonBasicEntities] AS [j]
+        ORDER BY [j].[Id]
+    ) AS [t]
+) AS [t0]");
+    }
+
+    public override async Task Json_subquery_reference_pushdown_reference_pushdown_reference(bool async)
+    {
+        await base.Json_subquery_reference_pushdown_reference_pushdown_reference(async);
+
+        AssertSql(
+            @"");
+    }
+
+    public override async Task Json_subquery_reference_pushdown_reference_pushdown_collection(bool async)
+    {
+        await base.Json_subquery_reference_pushdown_reference_pushdown_collection(async);
+
+        AssertSql(
+            @"");
+    }
+
+    public override async Task Json_subquery_reference_pushdown_reference_pushdown_collection2(bool async)
+    {
+        await base.Json_subquery_reference_pushdown_reference_pushdown_collection2(async);
+
+        AssertSql(
+            @"");
+    }
+
+    public override async Task Json_subquery_reference_pushdown_property(bool async)
+    {
+        await base.Json_subquery_reference_pushdown_property(async);
+
+        AssertSql(
+            @"");
+    }
+
     private void AssertSql(params string[] expected)
         => Fixture.TestSqlLoggerFactory.AssertBaseline(expected);
 }
