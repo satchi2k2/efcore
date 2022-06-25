@@ -621,10 +621,13 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                         _variables.Add(keyValuesParameter);
                         _expressions.Add(keyValuesAssignment);
 
+
+                        // TODO implement thing from smit's paper here
                         var updatedEntityShaperExpression = new RelationalEntityShaperExpression(
                             entityShaperExpression.EntityType,
                             new JsonValueBufferExpression(keyValuesParameter, jsonElementVariable, entityParameter, navigation: null),
-                            entityShaperExpression.IsNullable);
+                            nullable: false);
+                            //entityShaperExpression.IsNullable);
 
                         var jsonShapingResult = Visit(updatedEntityShaperExpression);
                         var resultAssignment = Expression.Assign(entityParameter, jsonShapingResult);
@@ -1264,7 +1267,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             var additionalPath = projectionIndex.Item3;
 
             var jsonElementVariable = Expression.Variable(
-                typeof(JsonElement));
+                typeof(JsonElement?));
 
             var keyValuesParameter = Expression.Parameter(typeof(object[]));
             var keyValues = new Expression[keyPropertyIndexMap.Count];
@@ -1292,12 +1295,18 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
 
             var jsonTypeMapping = (RelationalTypeMapping)entityType.FindRuntimeAnnotationValue(RelationalAnnotationNames.MapToJsonTypeMapping)!;
 
+            var clrType = jsonTypeMapping.ClrType;
+            if (clrType == typeof(JsonElement))
+            {
+                clrType = typeof(Nullable<>).MakeGenericType(jsonTypeMapping.ClrType);
+            }
+
             var jsonElementValueExpression = CreateGetValueExpression(
                 _dataReaderParameter,
                 jsonColumnProjectionIndex,
                 nullable: true,
                 jsonTypeMapping,
-                jsonTypeMapping.ClrType,
+                clrType,
                 property: null);
 
             if (additionalPath.Length > 0)
@@ -1374,7 +1383,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             IPropertyBase? property = null)
         {
             Check.DebugAssert(
-                property != null || type.IsNullableType() || typeMapping is JsonTypeMapping, "Must read nullable value from database if property is not specified.");
+                property != null || typeMapping is JsonTypeMapping, "Must read nullable value from database if property is not specified.");
 
             var getMethod = typeMapping.GetDataReaderMethod();
 

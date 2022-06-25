@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Microsoft.EntityFrameworkCore.TestModels.JsonQuery
 {
-    public class JsonCustomNamingEntity
+    public class JsonEntityCustomNaming
     {
         public int Id { get; set; }
 

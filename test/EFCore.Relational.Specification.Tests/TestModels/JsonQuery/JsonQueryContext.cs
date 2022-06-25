@@ -10,8 +10,10 @@ namespace Microsoft.EntityFrameworkCore.TestModels.JsonQuery
         {
         }
 
-        public DbSet<JsonBasicEntity> JsonBasicEntities { get; set; }
-        public DbSet<JsonCustomNamingEntity> JsonCustomNamingEntities { get; set; }
+        public DbSet<JsonEntityBasic> JsonEntitiesBasic { get; set; }
+        public DbSet<JsonEntityCustomNaming> JsonEntitiesCustomNaming { get; set; }
+
+        public DbSet<JsonEntitySingleOwned> JsonEntitiesSingleOwned { get; set; }
 
         public static void Seed(JsonQueryContext context)
         {

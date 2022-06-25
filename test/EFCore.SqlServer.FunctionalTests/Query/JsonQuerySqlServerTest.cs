@@ -18,7 +18,7 @@ public class JsonQuerySqlServerTest : JsonQueryTestBase<JsonQuerySqlServerFixtur
 
         AssertSql(
             @"SELECT [j].[Id], [j].[Name], JSON_QUERY([j].[json_collection_shared],'$'), JSON_QUERY([j].[json_reference_shared],'$')
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
     }
 
     public override async Task Basic_json_projection_owned_reference_root(bool async)
@@ -27,7 +27,7 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT JSON_QUERY([j].[json_reference_shared],'$'), [j].[Id]
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
     }
 
     public override async Task Basic_json_projection_owned_collection_root(bool async)
@@ -36,7 +36,7 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT JSON_QUERY([j].[json_collection_shared],'$'), [j].[Id]
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
     }
 
     public override async Task Basic_json_projection_owned_reference_branch(bool async)
@@ -45,7 +45,7 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT JSON_QUERY([j].[json_reference_shared],'$.OwnedReferenceSharedBranch'), [j].[Id]
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
     }
 
     public override async Task Basic_json_projection_owned_collection_branch(bool async)
@@ -54,7 +54,7 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT JSON_QUERY([j].[json_reference_shared],'$.OwnedCollectionSharedBranch'), [j].[Id]
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
     }
 
     public override async Task Basic_json_projection_owned_reference_leaf(bool async)
@@ -63,7 +63,7 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT JSON_QUERY([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf'), [j].[Id]
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
     }
 
     public override async Task Basic_json_projection_owned_collection_leaf(bool async)
@@ -72,7 +72,7 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT JSON_QUERY([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedCollectionSharedLeaf'), [j].[Id]
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
     }
 
     public override async Task Basic_json_projection_scalar(bool async)
@@ -81,7 +81,7 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT CAST(JSON_VALUE([j].[json_reference_shared],'$.Name') AS nvarchar(max))
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
     }
 
     public override async Task Json_projection_with_deduplication(bool async)
@@ -90,7 +90,15 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT JSON_QUERY([j].[json_reference_shared],'$.OwnedReferenceSharedBranch'), [j].[Id], JSON_QUERY([j].[json_reference_shared],'$.OwnedCollectionSharedBranch'), CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething') AS nvarchar(max))
-FROM [JsonBasicEntities] AS [j]");
+FROM [JsonEntitiesBasic] AS [j]");
+    }
+
+    public override async Task Json_projection_with_deduplication_reverse_order(bool async)
+    {
+        await base.Json_projection_with_deduplication_reverse_order(async);
+
+        AssertSql(
+            @"");
     }
 
     public override async Task Json_property_in_predicate(bool async)
@@ -99,7 +107,7 @@ FROM [JsonBasicEntities] AS [j]");
 
         AssertSql(
             @"SELECT [j].[Id]
-FROM [JsonBasicEntities] AS [j]
+FROM [JsonEntitiesBasic] AS [j]
 WHERE CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.Fraction') AS decimal(18,2)) < 20.5");
     }
 
@@ -115,7 +123,7 @@ FROM (
     SELECT DISTINCT [t].[c]
     FROM (
         SELECT TOP(@__p_0) CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething') AS nvarchar(max)) AS [c]
-        FROM [JsonBasicEntities] AS [j]
+        FROM [JsonEntitiesBasic] AS [j]
         ORDER BY [j].[Id]
     ) AS [t]
 ) AS [t0]");
@@ -133,7 +141,7 @@ FROM (
     SELECT DISTINCT JSON_QUERY([t].[c],'$') AS [c], [t].[Id]
     FROM (
         SELECT TOP(@__p_0) JSON_QUERY([j].[json_reference_shared],'$') AS [c], [j].[Id]
-        FROM [JsonBasicEntities] AS [j]
+        FROM [JsonEntitiesBasic] AS [j]
         ORDER BY [j].[Id]
     ) AS [t]
 ) AS [t0]");
@@ -151,7 +159,7 @@ FROM (
     SELECT DISTINCT JSON_QUERY([t].[c],'$') AS [c], [t].[Id], [t].[c0]
     FROM (
         SELECT TOP(@__p_0) JSON_QUERY([j].[json_reference_shared],'$') AS [c], [j].[Id], CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething') AS nvarchar(max)) AS [c0]
-        FROM [JsonBasicEntities] AS [j]
+        FROM [JsonEntitiesBasic] AS [j]
         ORDER BY [j].[Id]
     ) AS [t]
 ) AS [t0]");
@@ -173,7 +181,7 @@ FROM (
             SELECT DISTINCT JSON_QUERY([t].[c],'$') AS [c], [t].[Id], [t].[c0]
             FROM (
                 SELECT TOP(@__p_0) JSON_QUERY([j].[json_reference_shared],'$') AS [c], [j].[Id], CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething') AS nvarchar(max)) AS [c0]
-                FROM [JsonBasicEntities] AS [j]
+                FROM [JsonEntitiesBasic] AS [j]
                 ORDER BY [j].[Id]
             ) AS [t]
         ) AS [t0]
@@ -198,7 +206,7 @@ FROM (
             SELECT DISTINCT JSON_QUERY([t].[c],'$') AS [c], [t].[Id], [t].[c] AS [c0]
             FROM (
                 SELECT TOP(@__p_0) JSON_QUERY([j].[json_reference_shared],'$') AS [c], [j].[Id]
-                FROM [JsonBasicEntities] AS [j]
+                FROM [JsonEntitiesBasic] AS [j]
                 ORDER BY [j].[Id]
             ) AS [t]
         ) AS [t0]
@@ -223,7 +231,7 @@ FROM (
             SELECT DISTINCT JSON_QUERY([t].[c],'$') AS [c], [t].[Id], [t].[c] AS [c0]
             FROM (
                 SELECT TOP(@__p_0) JSON_QUERY([j].[json_reference_shared],'$') AS [c], [j].[Id]
-                FROM [JsonBasicEntities] AS [j]
+                FROM [JsonEntitiesBasic] AS [j]
                 ORDER BY [j].[Id]
             ) AS [t]
         ) AS [t0]

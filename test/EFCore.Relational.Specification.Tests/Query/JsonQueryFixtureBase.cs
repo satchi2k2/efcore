@@ -16,21 +16,22 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
     public IReadOnlyDictionary<Type, object> GetEntitySorters()
         => new Dictionary<Type, Func<object, object>>
         {
-            { typeof(JsonBasicEntity), e => ((JsonBasicEntity)e)?.Id },
-            { typeof(JsonCustomNamingEntity), e => ((JsonCustomNamingEntity)e)?.Id },
+            { typeof(JsonEntityBasic), e => ((JsonEntityBasic)e)?.Id },
+            { typeof(JsonEntityCustomNaming), e => ((JsonEntityCustomNaming)e)?.Id },
+            { typeof(JsonEntitySingleOwned), e => ((JsonEntitySingleOwned)e)?.Id },
         }.ToDictionary(e => e.Key, e => (object)e.Value);
 
     public IReadOnlyDictionary<Type, object> GetEntityAsserters()
         => new Dictionary<Type, Action<object, object>>
         {
             {
-                typeof(JsonBasicEntity), (e, a) =>
+                typeof(JsonEntityBasic), (e, a) =>
                 {
                     Assert.Equal(e == null, a == null);
                     if (a != null)
                     {
-                        var ee = (JsonBasicEntity)e;
-                        var aa = (JsonBasicEntity)a;
+                        var ee = (JsonEntityBasic)e;
+                        var aa = (JsonEntityBasic)a;
 
                         Assert.Equal(ee.Id, aa.Id);
                         Assert.Equal(ee.Name, aa.Name);
@@ -82,13 +83,13 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
                 }
             },
             {
-                typeof(JsonCustomNamingEntity), (e, a) =>
+                typeof(JsonEntityCustomNaming), (e, a) =>
                 {
                     Assert.Equal(e == null, a == null);
                     if (a != null)
                     {
-                        var ee = (JsonCustomNamingEntity)e;
-                        var aa = (JsonCustomNamingEntity)a;
+                        var ee = (JsonEntityCustomNaming)e;
+                        var aa = (JsonEntityCustomNaming)a;
 
                         Assert.Equal(ee.Id, aa.Id);
                         Assert.Equal(ee.Title, aa.Title);
@@ -124,6 +125,26 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
                         var aa = (JsonOwnedCustomNameBranch)a;
 
                         AssertCustomNameBranch(ee, aa);
+                    }
+                }
+            },
+            {
+                typeof(JsonEntitySingleOwned), (e, a) =>
+                {
+                    Assert.Equal(e == null, a == null);
+                    if (a != null)
+                    {
+                        var ee = (JsonEntitySingleOwned)e;
+                        var aa = (JsonEntitySingleOwned)a;
+
+                        Assert.Equal(ee.Id, aa.Id);
+                        Assert.Equal(ee.Name, aa.Name);
+
+                        Assert.Equal(ee.OwnedCollection?.Count ?? 0, aa.OwnedCollection?.Count ?? 0);
+                        for (var i = 0; i < ee.OwnedCollection.Count; i++)
+                        {
+                            AssertOwnedLeaf(ee.OwnedCollection[i], aa.OwnedCollection[i]);
+                        }
                     }
                 }
             },
@@ -198,7 +219,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder, DbContext context)
     {
-        modelBuilder.Entity<JsonBasicEntity>().OwnsOne(x => x.OwnedReferenceSharedRoot, b =>
+        modelBuilder.Entity<JsonEntityBasic>().OwnsOne(x => x.OwnedReferenceSharedRoot, b =>
         {
             b.OwnsOne(x => x.OwnedReferenceSharedBranch, bb =>
             {
@@ -217,7 +238,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
         //modelBuilder.Entity<MyEntity>().Navigation(x => x.OwnedReferenceSharedRoot).IsRequired();
 
-        modelBuilder.Entity<JsonBasicEntity>().OwnsMany(x => x.OwnedCollectionSharedRoot, b =>
+        modelBuilder.Entity<JsonEntityBasic>().OwnsMany(x => x.OwnedCollectionSharedRoot, b =>
         {
             b.OwnsOne(x => x.OwnedReferenceSharedBranch, bb =>
             {
@@ -234,10 +255,10 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
             });
         });
 
-        modelBuilder.Entity<JsonBasicEntity>().MapReferenceToJson(x => x.OwnedReferenceSharedRoot, "json_reference_shared");
-        modelBuilder.Entity<JsonBasicEntity>().MapCollectionToJson(x => x.OwnedCollectionSharedRoot, "json_collection_shared");
+        modelBuilder.Entity<JsonEntityBasic>().MapReferenceToJson(x => x.OwnedReferenceSharedRoot, "json_reference_shared");
+        modelBuilder.Entity<JsonEntityBasic>().MapCollectionToJson(x => x.OwnedCollectionSharedRoot, "json_collection_shared");
 
-        modelBuilder.Entity<JsonCustomNamingEntity>().OwnsOne(x => x.OwnedReferenceRoot, b =>
+        modelBuilder.Entity<JsonEntityCustomNaming>().OwnsOne(x => x.OwnedReferenceRoot, b =>
         {
             b.OwnsOne(x => x.OwnedReferenceBranch, bb =>
             {
@@ -254,7 +275,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
         //modelBuilder.Entity<JsonCustomNamingEntity>().Navigation(x => x.OwnedReferenceRoot).HasColumnName("CustomOwnedReferenceRoot");
 
-        modelBuilder.Entity<JsonCustomNamingEntity>().OwnsMany(x => x.OwnedCollectionRoot, b =>
+        modelBuilder.Entity<JsonEntityCustomNaming>().OwnsMany(x => x.OwnedCollectionRoot, b =>
         {
             b.OwnsOne(x => x.OwnedReferenceBranch, bb =>
             {
@@ -268,7 +289,11 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
             });
         });
 
-        modelBuilder.Entity<JsonCustomNamingEntity>().MapReferenceToJson(x => x.OwnedReferenceRoot, "json_reference_custom_naming");
-        modelBuilder.Entity<JsonCustomNamingEntity>().MapCollectionToJson(x => x.OwnedCollectionRoot, "json_collection_custom_naming");
+        modelBuilder.Entity<JsonEntityCustomNaming>().MapReferenceToJson(x => x.OwnedReferenceRoot, "json_reference_custom_naming");
+        modelBuilder.Entity<JsonEntityCustomNaming>().MapCollectionToJson(x => x.OwnedCollectionRoot, "json_collection_custom_naming");
+
+        modelBuilder.Entity<JsonEntitySingleOwned>().OwnsMany(x => x.OwnedCollection);
+        modelBuilder.Entity<JsonEntitySingleOwned>().MapCollectionToJson(x => x.OwnedCollection, "json_collection");
+
     }
 }

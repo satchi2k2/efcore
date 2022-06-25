@@ -1,10 +1,8 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Reflection.Emit;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.TestModels.JsonQuery;
-using Microsoft.IdentityModel.Tokens;
 
 namespace Microsoft.EntityFrameworkCore.Query;
 
@@ -17,64 +15,91 @@ public class JsonQuerySqlServerFixture : JsonQueryFixtureBase
     {
         base.Seed(context);
 
-        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonBasicEntities]");
+        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonEntitiesBasic]");
 
         context.Database.ExecuteSqlRaw(
-            @"CREATE TABLE [dbo].[JsonBasicEntities](
+            @"CREATE TABLE [dbo].[JsonEntitiesBasic](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[Name] [nvarchar](max) NULL,
 	[json_collection_shared] [nvarchar](max) NULL,
 	[json_reference_shared] [nvarchar](max) NULL,
- CONSTRAINT [PK_JsonBasicEntities] PRIMARY KEY CLUSTERED 
+ CONSTRAINT [PK_JsonEntitiesBasic] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
 ))");
 
-        var jsonBasicEntities = JsonQueryData.CreateJsonBasicEntities();
-        foreach (var jsonBasicEntity in jsonBasicEntities)
+        var jsonEntitiesBasic = JsonQueryData.CreateJsonEntitiesBasic();
+        foreach (var jsonEntityBasic in jsonEntitiesBasic)
         {
-            var jsonReference = JsonSerializer.Serialize(jsonBasicEntity.OwnedReferenceSharedRoot);
-            var jsonCollection = JsonSerializer.Serialize(jsonBasicEntity.OwnedCollectionSharedRoot);
+            var jsonReference = JsonSerializer.Serialize(jsonEntityBasic.OwnedReferenceSharedRoot);
+            var jsonCollection = JsonSerializer.Serialize(jsonEntityBasic.OwnedCollectionSharedRoot);
 
-            var sql = $@"INSERT INTO [dbo].[JsonBasicEntities]
+            var sql = $@"INSERT INTO [dbo].[JsonEntitiesBasic]
            ([Name]
            ,[json_collection_shared]
            ,[json_reference_shared])
      VALUES
-           ('JsonBasicEntity1'
+           ('{jsonEntityBasic.Name}'
            ,'{jsonCollection}'
            ,'{jsonReference}')";
 
             context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
         }
 
-        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonCustomNamingEntities]");
+        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonEntitiesCustomNaming]");
 
         context.Database.ExecuteSqlRaw(
-            @"CREATE TABLE [dbo].[JsonCustomNamingEntities](
+            @"CREATE TABLE [dbo].[JsonEntitiesCustomNaming](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[Title] [nvarchar](max) NULL,
 	[json_collection_custom_naming] [nvarchar](max) NULL,
 	[json_reference_custom_naming] [nvarchar](max) NULL,
- CONSTRAINT [PK_JsonCustomNamingEntities] PRIMARY KEY CLUSTERED 
+ CONSTRAINT [PK_JsonEntitiesCustomNaming] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
 ))");
 
-        var jsonCustomNamingEntities = JsonQueryData.CreateJsonCustomNamingEntities();
-        foreach (var jsonCustomNamingEntity in jsonCustomNamingEntities)
+        var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
+        foreach (var jsonEntityCustomNaming in jsonEntitiesCustomNaming)
         {
-            var jsonReference = JsonSerializer.Serialize(jsonCustomNamingEntity.OwnedReferenceRoot);
-            var jsonCollection = JsonSerializer.Serialize(jsonCustomNamingEntity.OwnedCollectionRoot);
+            var jsonReference = JsonSerializer.Serialize(jsonEntityCustomNaming.OwnedReferenceRoot);
+            var jsonCollection = JsonSerializer.Serialize(jsonEntityCustomNaming.OwnedCollectionRoot);
 
-            var sql = $@"INSERT INTO [dbo].[JsonCustomNamingEntities]
+            var sql = $@"INSERT INTO [dbo].[JsonEntitiesCustomNaming]
            ([Title]
            ,[json_collection_custom_naming]
            ,[json_reference_custom_naming])
      VALUES
-           ('JsonCustomNamingEntity1'
+           ('{jsonEntityCustomNaming.Title}'
            ,'{AddCustomNaming(jsonCollection)}'
            ,'{AddCustomNaming(jsonReference)}')";
+
+            context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
+        }
+
+        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonEntitiesSingleOwned]");
+
+        context.Database.ExecuteSqlRaw(
+            @"CREATE TABLE [dbo].[JsonEntitiesSingleOwned](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](max) NULL,
+	[json_collection] [nvarchar](max) NULL,
+ CONSTRAINT [PK_JsonEntitiesSingleOwned] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+))");
+
+        var jsonEntitiesSingleOwned = JsonQueryData.CreateJsonEntitiesSingleOwned();
+        foreach (var jsonEntitySingleOwned in jsonEntitiesSingleOwned)
+        {
+            var jsonCollection = JsonSerializer.Serialize(jsonEntitySingleOwned.OwnedCollection);
+
+            var sql = $@"INSERT INTO [dbo].[JsonEntitiesSingleOwned]
+           ([Name]
+           ,[json_collection])
+     VALUES
+           ('{jsonEntitySingleOwned.Name}'
+           ,'{AddCustomNaming(jsonCollection)}')";
 
             context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
         }

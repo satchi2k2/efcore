@@ -7,14 +7,16 @@ public class JsonQueryData : ISetSource
 {
     public JsonQueryData()
     {
-        JsonBasicEntities = CreateJsonBasicEntities();
-        JsonCustomNamingEntities = CreateJsonCustomNamingEntities();
+        JsonEntitiesBasic = CreateJsonEntitiesBasic();
+        JsonEntitiesCustomNaming = CreateJsonEntitiesCustomNaming();
+        JsonEntitiesSingleOwned = CreateJsonEntitiesSingleOwned();
     }
 
-    public IReadOnlyList<JsonBasicEntity> JsonBasicEntities { get; }
-    public IReadOnlyList<JsonCustomNamingEntity> JsonCustomNamingEntities { get; set; }
+    public IReadOnlyList<JsonEntityBasic> JsonEntitiesBasic { get; }
+    public IReadOnlyList<JsonEntityCustomNaming> JsonEntitiesCustomNaming { get; set; }
+    public IReadOnlyList<JsonEntitySingleOwned> JsonEntitiesSingleOwned { get; set; }
 
-    public static IReadOnlyList<JsonBasicEntity> CreateJsonBasicEntities()
+    public static IReadOnlyList<JsonEntityBasic> CreateJsonEntitiesBasic()
     {
         //-------------------------------------------------------------------------------------------
         //-------------------------------------------------------------------------------------------
@@ -213,18 +215,18 @@ public class JsonQueryData : ISetSource
         //-------------------------------------------------------------------------------------------
         //-------------------------------------------------------------------------------------------
 
-        var entity1 = new JsonBasicEntity
+        var entity1 = new JsonEntityBasic
         {
             Id = 1,
-            Name = "JsonBasicEntity1",
+            Name = "JsonEntityBasic1",
             OwnedReferenceSharedRoot = e1_r_shared,
             OwnedCollectionSharedRoot = new List<MyOwnedRootShared> { e1_c1_shared, e1_c2_shared }
         };
 
-        return new List<JsonBasicEntity> { entity1 };
+        return new List<JsonEntityBasic> { entity1 };
     }
 
-    public static IReadOnlyList<JsonCustomNamingEntity> CreateJsonCustomNamingEntities()
+    public static IReadOnlyList<JsonEntityCustomNaming> CreateJsonEntitiesCustomNaming()
     {
         var e1_r_r = new JsonOwnedCustomNameBranch
         {
@@ -304,28 +306,70 @@ public class JsonQueryData : ISetSource
             OwnedCollectionBranch = new List<JsonOwnedCustomNameBranch> { e1_c2_c1, e1_c2_c2 }
         };
 
-        var entity1 = new JsonCustomNamingEntity
+        var entity1 = new JsonEntityCustomNaming
         {
             Id = 1,
-            Title = "JsonCustomNamingEntity1",
+            Title = "JsonEntityCustomNaming1",
             OwnedReferenceRoot = e1_r,
             OwnedCollectionRoot = new List<JsonOwnedCustomNameRoot> { e1_c1, e1_c2 }
         };
 
-        return new List<JsonCustomNamingEntity> { entity1 };
+        return new List<JsonEntityCustomNaming> { entity1 };
+    }
+
+    public static IReadOnlyList<JsonEntitySingleOwned> CreateJsonEntitiesSingleOwned()
+    {
+        var e1 = new JsonEntitySingleOwned
+        {
+            Id = 1,
+            Name = "JsonEntitySingleOwned1",
+            OwnedCollection = new List<MyOwnedLeafShared>
+            {
+                new MyOwnedLeafShared { SomethingSomething = "owned_1_1" },
+                new MyOwnedLeafShared { SomethingSomething = "owned_1_2" },
+                new MyOwnedLeafShared { SomethingSomething = "owned_1_3" },
+            }
+        };
+
+        var e2 = new JsonEntitySingleOwned
+        {
+            Id = 2,
+            Name = "JsonEntitySingleOwned2",
+            OwnedCollection = new List<MyOwnedLeafShared>
+            {
+            }
+        };
+
+        var e3 = new JsonEntitySingleOwned
+        {
+            Id = 3,
+            Name = "JsonEntitySingleOwned3",
+            OwnedCollection = new List<MyOwnedLeafShared>
+            {
+                new MyOwnedLeafShared { SomethingSomething = "owned_3_1" },
+                new MyOwnedLeafShared { SomethingSomething = "owned_3_2" },
+            }
+        };
+
+        return new List<JsonEntitySingleOwned> { e1, e2, e3 };
     }
 
     public IQueryable<TEntity> Set<TEntity>()
         where TEntity : class
     {
-        if (typeof(TEntity) == typeof(JsonBasicEntity))
+        if (typeof(TEntity) == typeof(JsonEntityBasic))
         {
-            return (IQueryable<TEntity>)JsonBasicEntities.AsQueryable();
+            return (IQueryable<TEntity>)JsonEntitiesBasic.AsQueryable();
         }
 
-        if (typeof(TEntity) == typeof(JsonCustomNamingEntity))
+        if (typeof(TEntity) == typeof(JsonEntityCustomNaming))
         {
-            return (IQueryable<TEntity>)JsonCustomNamingEntities.AsQueryable();
+            return (IQueryable<TEntity>)JsonEntitiesCustomNaming.AsQueryable();
+        }
+
+        if (typeof(TEntity) == typeof(JsonEntitySingleOwned))
+        {
+            return (IQueryable<TEntity>)JsonEntitiesSingleOwned.AsQueryable();
         }
 
         throw new InvalidOperationException("Invalid entity type: " + typeof(TEntity));

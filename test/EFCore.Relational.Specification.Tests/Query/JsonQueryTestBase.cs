@@ -18,7 +18,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Basic_json_projection_owner_entity(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>(),
+            ss => ss.Set<JsonEntityBasic>(),
             entryCount: 40);
 
     [ConditionalTheory]
@@ -26,14 +26,14 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Basic_json_projection_owned_reference_root(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>().Select(x => x.OwnedReferenceSharedRoot).AsNoTracking());
+            ss => ss.Set<JsonEntityBasic>().Select(x => x.OwnedReferenceSharedRoot).AsNoTracking());
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
     public virtual Task Basic_json_projection_owned_collection_root(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>().Select(x => x.OwnedCollectionSharedRoot).AsNoTracking(),
+            ss => ss.Set<JsonEntityBasic>().Select(x => x.OwnedCollectionSharedRoot).AsNoTracking(),
             elementAsserter: (e, a) => AssertCollection(e, a, ordered: true));
 
     [ConditionalTheory]
@@ -41,14 +41,14 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Basic_json_projection_owned_reference_branch(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>().Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch).AsNoTracking());
+            ss => ss.Set<JsonEntityBasic>().Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch).AsNoTracking());
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
     public virtual Task Basic_json_projection_owned_collection_branch(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>().Select(x => x.OwnedReferenceSharedRoot.OwnedCollectionSharedBranch).AsNoTracking(),
+            ss => ss.Set<JsonEntityBasic>().Select(x => x.OwnedReferenceSharedRoot.OwnedCollectionSharedBranch).AsNoTracking(),
             elementAsserter: (e, a) => AssertCollection(e, a, ordered: true));
 
     [ConditionalTheory]
@@ -56,14 +56,14 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Basic_json_projection_owned_reference_leaf(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>().Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf).AsNoTracking());
+            ss => ss.Set<JsonEntityBasic>().Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf).AsNoTracking());
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
     public virtual Task Basic_json_projection_owned_collection_leaf(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>().Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedCollectionSharedLeaf).AsNoTracking(),
+            ss => ss.Set<JsonEntityBasic>().Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedCollectionSharedLeaf).AsNoTracking(),
             elementAsserter: (e, a) => AssertCollection(e, a, ordered: true));
 
     [ConditionalTheory]
@@ -71,14 +71,14 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Basic_json_projection_scalar(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>().Select(x => x.OwnedReferenceSharedRoot.Name));
+            ss => ss.Set<JsonEntityBasic>().Select(x => x.OwnedReferenceSharedRoot.Name));
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
     public virtual Task Json_projection_with_deduplication(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>().Select(x => new
+            ss => ss.Set<JsonEntityBasic>().Select(x => new
             {
                 x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch,
                 x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf,
@@ -94,12 +94,31 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
                 Assert.Equal(e.SomethingSomething, a.SomethingSomething);
             });
 
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Json_projection_with_deduplication_reverse_order(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<JsonEntityBasic>().Select(x => new
+            {
+                x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf,
+                x.OwnedReferenceSharedRoot,
+                x
+            }),
+            elementAsserter: (e, a) =>
+            {
+                AssertEqual(e.OwnedReferenceSharedLeaf, a.OwnedReferenceSharedLeaf);
+                AssertEqual(e.OwnedReferenceSharedRoot, a.OwnedReferenceSharedRoot);
+                AssertEqual(e, a);
+            });
+
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
     public virtual Task Json_property_in_predicate(bool async)
         => AssertQueryScalar(
             async,
-            ss => ss.Set<JsonBasicEntity>()
+            ss => ss.Set<JsonEntityBasic>()
                 .Where(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.Fraction < 20.5M).Select(x => x.Id));
 
     [ConditionalTheory]
@@ -107,7 +126,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Json_subquery_property_pushdown_length(bool async)
         => AssertQueryScalar(
             async,
-            ss => ss.Set<JsonBasicEntity>()
+            ss => ss.Set<JsonEntityBasic>()
                 .OrderBy(x => x.Id)
                 .Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething)
                 .Take(3)
@@ -119,7 +138,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Json_subquery_reference_pushdown_reference(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>()
+            ss => ss.Set<JsonEntityBasic>()
                 .OrderBy(x => x.Id)
                 .Select(x => x.OwnedReferenceSharedRoot)
                 .Take(10)
@@ -131,7 +150,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Json_subquery_reference_pushdown_reference_anonymous_projection(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>()
+            ss => ss.Set<JsonEntityBasic>()
                 .OrderBy(x => x.Id)
                 .Select(x => new { Entity = x.OwnedReferenceSharedRoot, Scalar = x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething })
                 .Take(10)
@@ -149,7 +168,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Json_subquery_reference_pushdown_reference_pushdown_anonymous_projection(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>()
+            ss => ss.Set<JsonEntityBasic>()
                 .OrderBy(x => x.Id)
                 .Select(x => new { Root = x.OwnedReferenceSharedRoot, Scalar = x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething })
                 .Take(10)
@@ -173,7 +192,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Json_subquery_reference_pushdown_reference_pushdown_reference(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>()
+            ss => ss.Set<JsonEntityBasic>()
                 .OrderBy(x => x.Id)
                 .Select(x => x.OwnedReferenceSharedRoot)
                 .Take(10)
@@ -189,7 +208,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Json_subquery_reference_pushdown_reference_pushdown_collection(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>()
+            ss => ss.Set<JsonEntityBasic>()
                 .OrderBy(x => x.Id)
                 .Select(x => x.OwnedReferenceSharedRoot)
                 .Take(10)
@@ -206,7 +225,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Json_subquery_reference_pushdown_property(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonBasicEntity>()
+            ss => ss.Set<JsonEntityBasic>()
                 .OrderBy(x => x.Id)
                 .Select(x => x.OwnedReferenceSharedRoot.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf)
                 .Take(10)
@@ -218,7 +237,7 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Custom_naming_projection_owner_entity(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonCustomNamingEntity>().Select(x => x),
+            ss => ss.Set<JsonEntityCustomNaming>().Select(x => x),
             entryCount: 13);
 
     [ConditionalTheory]
@@ -226,14 +245,14 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Custom_naming_projection_owned_reference(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonCustomNamingEntity>().Select(x => x.OwnedReferenceRoot.OwnedReferenceBranch).AsNoTracking());
+            ss => ss.Set<JsonEntityCustomNaming>().Select(x => x.OwnedReferenceRoot.OwnedReferenceBranch).AsNoTracking());
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
     public virtual Task Custom_naming_projection_owned_collection(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonCustomNamingEntity>().OrderBy(x => x.Id).Select(x => x.OwnedCollectionRoot).AsNoTracking(),
+            ss => ss.Set<JsonEntityCustomNaming>().OrderBy(x => x.Id).Select(x => x.OwnedCollectionRoot).AsNoTracking(),
             assertOrder: true,
             elementAsserter: (e, a) => AssertCollection(e, a, ordered: true));
 
@@ -242,14 +261,14 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
     public virtual Task Custom_naming_projection_owned_scalar(bool async)
         => AssertQueryScalar(
             async,
-            ss => ss.Set<JsonCustomNamingEntity>().Select(x => x.OwnedReferenceRoot.OwnedReferenceBranch.Fraction));
+            ss => ss.Set<JsonEntityCustomNaming>().Select(x => x.OwnedReferenceRoot.OwnedReferenceBranch.Fraction));
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
     public virtual Task Custom_naming_projection_everything(bool async)
         => AssertQuery(
             async,
-            ss => ss.Set<JsonCustomNamingEntity>().Select(x => new
+            ss => ss.Set<JsonEntityCustomNaming>().Select(x => new
             {
                 root = x,
                 referece = x.OwnedReferenceRoot,
@@ -271,4 +290,12 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
                 Assert.Equal(e.nested_scalar, a.nested_scalar);
             },
             entryCount: 13);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public virtual Task Project_entity_with_single_owned(bool async)
+        => AssertQuery(
+            async,
+            ss => ss.Set<JsonEntitySingleOwned>(),
+            entryCount: 8);
 }
