@@ -621,12 +621,43 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                         _variables.Add(keyValuesParameter);
                         _expressions.Add(keyValuesAssignment);
 
+                        var jsonNullCondition = entityShaperExpression.IsNullable
+                            ? (Expression)Expression.Default(entityShaperExpression.Type)
+                            : Expression.Throw(
+                                Expression.New(
+                                    typeof(InvalidOperationException).GetConstructors()
+                                        .Single(ci => ci.GetParameters().Length == 1),
+                                    // TODO: resource string (and fix this message!)
+                                    Expression.Constant("entity is not nullable but json is null")),
+                                entityShaperExpression.Type);
+
+                        var updatedEntityShaperExpression = Expression.Condition(
+                            Expression.Property(jsonElementVariable, nameof(Nullable<JsonElement>.HasValue)),
+                            new RelationalEntityShaperExpression(
+                                entityShaperExpression.EntityType,
+                                new JsonValueBufferExpression(
+                                    keyValuesParameter,
+                                //jsonElementVariable,
+                                    Expression.Property(
+                                        jsonElementVariable,
+                                        nameof(Nullable<JsonElement>.Value)),
+                                    entityParameter,
+                                    navigation: null),
+                                nullable: false),
+                            jsonNullCondition);
+
+                        // condition: if shaper is nullable:
+                        // JE.HasValue ? normal : default
+
+                        // if shaper is not nullable:
+                        // JE.HasValue ? normal : throw
+
 
                         // TODO implement thing from smit's paper here
-                        var updatedEntityShaperExpression = new RelationalEntityShaperExpression(
-                            entityShaperExpression.EntityType,
-                            new JsonValueBufferExpression(keyValuesParameter, jsonElementVariable, entityParameter, navigation: null),
-                            nullable: false);
+                        //var updatedEntityShaperExpression = new RelationalEntityShaperExpression(
+                        //    entityShaperExpression.EntityType,
+                        //    new JsonValueBufferExpression(keyValuesParameter, jsonElementVariable, entityParameter, navigation: null),
+                        //    nullable: false);
                             //entityShaperExpression.IsNullable);
 
                         var jsonShapingResult = Visit(updatedEntityShaperExpression);
@@ -694,13 +725,26 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                     _variables.Add(keyValuesParameter);
                     _expressions.Add(keyValuesAssignment);
 
-                    var updatedCollectionResultExpression = new JsonCollectionResultInternalExpression(
-                        new JsonValueBufferExpression(keyValuesParameter, jsonElementVariable, entityCollectionParameter, navigation: null),
-                        collectionResultExpression.Navigation,
-                        collectionResultExpression.ElementType,
-                        collectionResultExpression.Type);
+                    // TODO: can collection be non-nullable? Currently we always assume it's safe to return null (unlike the entity shaper case)
+                    var updatedCollectionResultExpression = Expression.Condition(
+                        Expression.Property(
+                            jsonElementVariable,
+                            nameof(Nullable<JsonElement>.HasValue)),
+                        new JsonCollectionResultInternalExpression(
+                            new JsonValueBufferExpression(
+                                keyValuesParameter,
+                                Expression.Property(
+                                    jsonElementVariable,
+                                    nameof(Nullable<JsonElement>.Value)),
+                                entityCollectionParameter,
+                                navigation: null),
+                            collectionResultExpression.Navigation,
+                            collectionResultExpression.ElementType,
+                            collectionResultExpression.Type),
+                        Expression.Default(collectionResultExpression.Type));
 
                     var jsonShapingResult = Visit(updatedCollectionResultExpression);
+
                     var resultAssignment = Expression.Assign(entityCollectionParameter, jsonShapingResult);
 
                     _expressions.Add(resultAssignment);
@@ -960,6 +1004,8 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
 
                         _variables.Add(keyValuesParameter);
                         _expressions.Add(keyValuesAssignment);
+
+                        // TODO: implement smit's thing like in other 2 places!
 
                         var updatedValueBufferExpression = new JsonValueBufferExpression(keyValuesParameter, jsonElementVariable, entity, includeExpression.Navigation);
                         var updatedNavigationExpression = includeExpression.NavigationExpression is CollectionResultExpression cre
@@ -2500,7 +2546,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
     {
         public JsonValueBufferExpression(
             ParameterExpression keyValuesParameter,
-            ParameterExpression jsonElementParameter,
+            /*Parameter*/Expression jsonElementParameter,
             Expression entityExpression,
             INavigationBase? navigation)
         {
@@ -2511,11 +2557,12 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
         }
 
         public ParameterExpression KeyValuesParameter { get; }
-        public ParameterExpression JsonElementParameter { get; }
+        public /*Parameter*/Expression JsonElementParameter { get; }
         public Expression EntityExpression { get; }
         public INavigationBase? Navigation { get; }
 
         public override Type Type => typeof(ValueBuffer);
+        public override ExpressionType NodeType => ExpressionType.Extension;
     }
 
     private sealed class JsonCollectionResultInternalExpression : Expression
@@ -2541,5 +2588,6 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
         public Type ElementType { get; }
 
         public override Type Type => _type;
+        public override ExpressionType NodeType => ExpressionType.Extension;
     }
 }
