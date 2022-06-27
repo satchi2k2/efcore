@@ -548,6 +548,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                                 innerShaperLambda,
                                 fixup);
 
+                            // this returns different type than input!!!
                             return materializeIncludedJsonEntityCollectionMethodCall;
                         }
 
@@ -1005,17 +1006,49 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                         _variables.Add(keyValuesParameter);
                         _expressions.Add(keyValuesAssignment);
 
-                        // TODO: implement smit's thing like in other 2 places!
+                        var updatedValueBufferExpression = new JsonValueBufferExpression(
+                            keyValuesParameter,
+                            Expression.Property(
+                                jsonElementVariable,
+                                nameof(Nullable<JsonElement>.Value)),
+                            entity,
+                            includeExpression.Navigation);
 
-                        var updatedValueBufferExpression = new JsonValueBufferExpression(keyValuesParameter, jsonElementVariable, entity, includeExpression.Navigation);
                         var updatedNavigationExpression = includeExpression.NavigationExpression is CollectionResultExpression cre
                             ? (Expression)new JsonCollectionResultInternalExpression(updatedValueBufferExpression, cre.Navigation, cre.ElementType, cre.Type)
                             : ((RelationalEntityShaperExpression)includeExpression.NavigationExpression).Update(updatedValueBufferExpression);
 
                         var jsonShapingResult = Visit(updatedNavigationExpression);
-                        _expressions.Add(jsonShapingResult);
+
+                        var conditionExpression = Expression.IfThen(
+                            Expression.Property(jsonElementVariable, nameof(Nullable<JsonElement>.HasValue)),
+                            jsonShapingResult);
+
+                        _expressions.Add(conditionExpression);
+
+                        //_expressions.Add(jsonShapingResult);
 
                         return entity;
+
+                        //var visitedNavigationExpression = Visit(updatedNavigationExpression);
+
+                        //var ifFalse = includeExpression.NavigationExpression is CollectionResultExpression || ((RelationalEntityShaperExpression)includeExpression.NavigationExpression).IsNullable
+                        //    ? (Expression)Expression.Default(includeExpression.NavigationExpression.Type)
+                        //    : Expression.Throw(
+                        //        Expression.New(
+                        //            typeof(InvalidOperationException).GetConstructors().Single(ci => ci.GetParameters().Length == 1),
+                        //            // TODO: resource string (and fix this message!)
+                        //            Expression.Constant("entity is not nullable but json is null")),
+                        //        includeExpression.NavigationExpression.Type);
+
+                        //var jsonShapingResult = Expression.Condition(
+                        //    Expression.Property(jsonElementVariable, nameof(Nullable<JsonElement>.HasValue)),
+                        //    visitedNavigationExpression,
+                        //    ifFalse);
+
+                        //_expressions.Add(jsonShapingResult);
+
+                        //return entity;
                     }
                     else
                     {
@@ -1429,7 +1462,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             IPropertyBase? property = null)
         {
             Check.DebugAssert(
-                property != null || typeMapping is JsonTypeMapping, "Must read nullable value from database if property is not specified.");
+                property != null || type.IsNullableType(), "Must read nullable value from database if property is not specified.");
 
             var getMethod = typeMapping.GetDataReaderMethod();
 
