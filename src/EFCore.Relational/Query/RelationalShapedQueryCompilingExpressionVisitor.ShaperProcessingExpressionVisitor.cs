@@ -616,7 +616,8 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
 
                         var (jsonElementVariable, keyValuesParameter) = JsonShapingPreProcess(
                             (ProjectionBindingExpression)entityShaperExpression.ValueBufferExpression,
-                            entityShaperExpression.EntityType);
+                            entityShaperExpression.EntityType,
+                            isCollection: false);
 
                         var jsonNullCondition = entityShaperExpression.IsNullable
                             ? (Expression)Expression.Default(entityShaperExpression.Type)
@@ -699,7 +700,8 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
 
                     var (jsonElementVariable, keyValuesParameter) = JsonShapingPreProcess(
                         collectionResultExpression.ProjectionBindingExpression,
-                        navigation.TargetEntityType);
+                        navigation.TargetEntityType,
+                        isCollection: true);
 
                     // TODO: can collection be non-nullable? Currently we always assume it's safe to return null (unlike the entity shaper case)
                     var updatedCollectionResultExpression = Expression.Condition(
@@ -966,18 +968,15 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                                         includingEntityType, relatedEntityType, navigation, inverseNavigation).Compile()),
                                 Expression.Constant(_isTracking)));
                     }
-
-
-                    else if (includeExpression.NavigationExpression is CollectionResultExpression
-                        || includeExpression.NavigationExpression is RelationalEntityShaperExpression)
-                    //else if (includeExpression.Navigation.TargetEntityType.IsMappedToJson())
+                    else if (includeExpression.Navigation.TargetEntityType.IsMappedToJson())
                     {
                         var projectionBindingExpression = (includeExpression.NavigationExpression as CollectionResultExpression)?.ProjectionBindingExpression
                             ?? (ProjectionBindingExpression)((RelationalEntityShaperExpression)includeExpression.NavigationExpression).ValueBufferExpression;
 
                         var (jsonElementVariable, keyValuesParameter) = JsonShapingPreProcess(
                             projectionBindingExpression,
-                            includeExpression.Navigation.TargetEntityType);
+                            includeExpression.Navigation.TargetEntityType,
+                            includeExpression.Navigation.IsCollection);
 
                         var updatedValueBufferExpression = new JsonValueBufferExpression(
                             keyValuesParameter,
@@ -1293,7 +1292,10 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             return base.VisitMethodCall(methodCallExpression);
         }
 
-        private (ParameterExpression, ParameterExpression) JsonShapingPreProcess(ProjectionBindingExpression projectionBindingExpression, IEntityType entityType)
+        private (ParameterExpression, ParameterExpression) JsonShapingPreProcess(
+            ProjectionBindingExpression projectionBindingExpression,
+            IEntityType entityType,
+            bool isCollection)
         {
             var projectionIndex = (ValueTuple<int, Dictionary<IProperty, int>, string[]>)GetProjectionIndex(projectionBindingExpression);
 
@@ -1304,12 +1306,17 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             var keyValuesParameter = Expression.Parameter(typeof(object[]));
             var keyValues = new Expression[keyPropertyIndexMap.Count];
 
-            var keyIndex = 0;
-            foreach (var keyProperty in entityType.FindPrimaryKey()!.Properties.Where(p => p.IsForeignKey()))
+            var primaryKeyProperties = entityType.FindPrimaryKey()!.Properties;
+            var primaryKeyPropertiesCount = isCollection
+                ? primaryKeyProperties.Count() - 1
+                : primaryKeyProperties.Count();
+
+            for (var i = 0; i < primaryKeyPropertiesCount; i++)
             {
+                var keyProperty = primaryKeyProperties[i];
                 var projection = _selectExpression.Projection[keyPropertyIndexMap[keyProperty]];
 
-                keyValues[keyIndex] = Expression.Convert(
+                keyValues[i] = Expression.Convert(
                     CreateGetValueExpression(
                         _dataReaderParameter,
                         keyPropertyIndexMap[keyProperty],
@@ -1318,8 +1325,6 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                         keyProperty.ClrType,
                         keyProperty),
                     typeof(object));
-
-                keyIndex++;
             }
 
             var keyValuesInitialize = Expression.NewArrayInit(typeof(object), keyValues);
@@ -1337,18 +1342,18 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
 
             // TODO: this logic could/should be improved (later)
             var currentJsonElementVariable = default(ParameterExpression);
-            var i = 0;
+            var index = 0;
             do
             {
                 // try to find JsonElement variable for this json column and path if we encountered (and cached it) before
                 // otherwise either create new JsonElement from the data reader if we are at root level
                 // or build on top of previous variable withing the navigation chain (e.g. when we encountered the root before, but not this entire path)
-                if (!_existingJsonElementMap.TryGetValue((jsonColumnProjectionIndex, additionalPath[..i]), out var exisitingJsonElementVariable2))
+                if (!_existingJsonElementMap.TryGetValue((jsonColumnProjectionIndex, additionalPath[..index]), out var exisitingJsonElementVariable2))
                 {
                     var jsonElementVariable = Expression.Variable(
                         typeof(JsonElement?));
 
-                    var jsonElementValueExpression = i == 0
+                    var jsonElementValueExpression = index == 0
                         ? CreateGetValueExpression(
                             _dataReaderParameter,
                             jsonColumnProjectionIndex,
@@ -1364,7 +1369,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                                         currentJsonElementVariable!,
                                         nameof(Nullable<JsonElement>.Value)),
                                     JsonElementGetPropertyMethod,
-                                    Expression.Constant(additionalPath[i - 1])),
+                                    Expression.Constant(additionalPath[index - 1])),
                                 currentJsonElementVariable!.Type),
                                 Expression.Default(currentJsonElementVariable!.Type));
 
@@ -1374,7 +1379,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
 
                     _variables.Add(jsonElementVariable);
                     _expressions.Add(jsonElementAssignment);
-                    _existingJsonElementMap[(jsonColumnProjectionIndex, additionalPath[..i])] = jsonElementVariable;
+                    _existingJsonElementMap[(jsonColumnProjectionIndex, additionalPath[..index])] = jsonElementVariable;
 
                     currentJsonElementVariable = jsonElementVariable;
                 }
@@ -1383,9 +1388,9 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                     currentJsonElementVariable = exisitingJsonElementVariable2;
                 }
 
-                i++;
+                index++;
             }
-            while (i <= additionalPath.Length);
+            while (index <= additionalPath.Length);
 
             return (currentJsonElementVariable!, keyValuesParameter);
         }
