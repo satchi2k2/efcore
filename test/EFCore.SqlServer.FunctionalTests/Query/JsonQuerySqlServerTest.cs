@@ -173,20 +173,20 @@ FROM (
         AssertSql(
             @"@__p_0='10'
 
-SELECT JSON_QUERY([t2].[c],'$.OwnedReferenceSharedLeaf'), [t2].[Id], JSON_QUERY([t2].[c],'$.OwnedCollectionSharedLeaf'), [t2].[c0]
+SELECT JSON_QUERY([t2].[c],'$.OwnedReferenceSharedLeaf'), [t2].[Id], JSON_QUERY([t2].[c],'$.OwnedCollectionSharedLeaf'), [t2].[Length]
 FROM (
-    SELECT DISTINCT JSON_QUERY([t1].[c],'$') AS [c], [t1].[Id], [t1].[c0]
+    SELECT DISTINCT JSON_QUERY([t1].[c],'$') AS [c], [t1].[Id], [t1].[Length]
     FROM (
-        SELECT TOP(@__p_0) JSON_QUERY([t0].[c],'$.OwnedReferenceSharedBranch') AS [c], [t0].[Id], CAST(LEN([t0].[c0]) AS int) AS [c0]
+        SELECT TOP(@__p_0) JSON_QUERY([t0].[c],'$.OwnedReferenceSharedBranch') AS [c], [t0].[Id], CAST(LEN([t0].[Scalar]) AS int) AS [Length]
         FROM (
-            SELECT DISTINCT JSON_QUERY([t].[c],'$') AS [c], [t].[Id], [t].[c0]
+            SELECT DISTINCT JSON_QUERY([t].[c],'$') AS [c], [t].[Id], [t].[Scalar]
             FROM (
-                SELECT TOP(@__p_0) JSON_QUERY([j].[json_reference_shared],'$') AS [c], [j].[Id], CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething') AS nvarchar(max)) AS [c0]
+                SELECT TOP(@__p_0) JSON_QUERY([j].[json_reference_shared],'$') AS [c], [j].[Id], CAST(JSON_VALUE([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf.SomethingSomething') AS nvarchar(max)) AS [Scalar]
                 FROM [JsonEntitiesBasic] AS [j]
                 ORDER BY [j].[Id]
             ) AS [t]
         ) AS [t0]
-        ORDER BY CAST(LEN([t0].[c0]) AS int)
+        ORDER BY CAST(LEN([t0].[Scalar]) AS int)
     ) AS [t1]
 ) AS [t2]");
     }
@@ -246,7 +246,17 @@ FROM (
         await base.Json_subquery_reference_pushdown_property(async);
 
         AssertSql(
-            @"");
+            @"@__p_0='10'
+
+SELECT CAST(JSON_VALUE([t0].[c],'$.SomethingSomething') AS nvarchar(max))
+FROM (
+    SELECT DISTINCT JSON_QUERY([t].[c],'$') AS [c], [t].[Id]
+    FROM (
+        SELECT TOP(@__p_0) JSON_QUERY([j].[json_reference_shared],'$.OwnedReferenceSharedBranch.OwnedReferenceSharedLeaf') AS [c], [j].[Id]
+        FROM [JsonEntitiesBasic] AS [j]
+        ORDER BY [j].[Id]
+    ) AS [t]
+) AS [t0]");
     }
 
     private void AssertSql(params string[] expected)

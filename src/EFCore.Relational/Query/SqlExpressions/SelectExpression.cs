@@ -1384,7 +1384,8 @@ public sealed partial class SelectExpression : TableExpressionBase
         {
             Check.DebugAssert(
                 expression is SqlExpression
-                || expression is EntityProjectionExpression,
+                || expression is EntityProjectionExpression
+                || expression is JsonQueryExpression,
                 "Invalid operation in the projection.");
             _projectionMapping[projectionMember] = expression;
         }
@@ -3150,6 +3151,10 @@ public sealed partial class SelectExpression : TableExpressionBase
                 if (expression is EntityProjectionExpression entityProjection)
                 {
                     _projectionMapping[projectionMember] = LiftEntityProjectionFromSubquery(entityProjection);
+                }
+                else if (expression is JsonQueryExpression jsonQueryExpression)
+                {
+                    _projectionMapping[projectionMember] = LiftJsonQueryFromSubquery(jsonQueryExpression);
                 }
                 else
                 {

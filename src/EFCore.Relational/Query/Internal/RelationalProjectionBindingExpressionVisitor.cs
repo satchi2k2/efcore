@@ -333,7 +333,10 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                     }
                     else
                     {
-                        return QueryCompilationContext.NotTranslatedExpression;
+                        _projectionMapping[_projectionMembers.Peek()] = jsonQueryExpression;
+
+                        return entityShaperExpression.Update(
+                            new ProjectionBindingExpression(_selectExpression, _projectionMembers.Peek(), typeof(ValueBuffer)));
                     }
                 }
 
@@ -358,15 +361,14 @@ public class RelationalProjectionBindingExpressionVisitor : ExpressionVisitor
                         }
                         else
                         {
-                            return QueryCompilationContext.NotTranslatedExpression;
+                            _projectionMapping[_projectionMembers.Peek()] = jsonQuery;
+
+                            return entityShaperExpression.Update(
+                                new ProjectionBindingExpression(_selectExpression, _projectionMembers.Peek(), typeof(ValueBuffer)));
                         }
                     }
 
                     entityProjectionExpression = (EntityProjectionExpression)projection;
-
-                    //entityProjectionExpression =
-                    //    (EntityProjectionExpression)((SelectExpression)projectionBindingExpression.QueryExpression)
-                    //    .GetProjection(projectionBindingExpression);
                 }
                 else
                 {
