@@ -416,7 +416,6 @@ public class RelationalModel : Annotatable, IRelationalModel
                 {
                     jsonColumn = new JsonColumn(mapToJsonColumnName, jsonColumnTypeMapping.StoreType, table);
                     table.Columns.Add(mapToJsonColumnName, jsonColumn);
-                    jsonColumn.IsNullable = false;
                 }
 
                 ownership = mappedType.GetForeignKeys().Where(fk => fk.IsOwnership).Single();

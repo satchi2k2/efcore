@@ -39,14 +39,7 @@ public class EntityProjectionExpression : Expression
     {
     }
 
-    /// <summary>
-    ///     Creates a new instance of the <see cref="EntityProjectionExpression" /> class.
-    /// </summary>
-    /// <param name="entityType">The entity type to shape.</param>
-    /// <param name="propertyExpressionMap">A dictionary of column expressions corresponding to properties of the entity type.</param>
-    /// <param name="jsonNavigationMap">A dictionary of navigations corresponding to json query expressions.</param>
-    /// <param name="discriminatorExpression">A <see cref="SqlExpression" /> to generate discriminator for each concrete entity type in hierarchy.</param>
-    public EntityProjectionExpression(
+    private EntityProjectionExpression(
         IEntityType entityType,
         IReadOnlyDictionary<IProperty, ColumnExpression> propertyExpressionMap,
         IDictionary<INavigation, EntityShaperExpression> jsonNavigationMap,
