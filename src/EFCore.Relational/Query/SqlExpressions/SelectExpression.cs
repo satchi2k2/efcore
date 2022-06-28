@@ -1325,23 +1325,6 @@ public sealed partial class SelectExpression : TableExpressionBase
             return shaperExpression;
         }
 
-        //{
-        //    var result = new Dictionary<ProjectionMember, Expression>(_projectionMapping.Count);
-        //    foreach (var (projectionMember, expression) in _projectionMapping)
-        //    {
-        //        result[projectionMember] = expression is EntityProjectionExpression entityProjection
-        //            ? AddEntityProjection(entityProjection)
-        //            : expression is JsonProjectionExpression jsonProjectionExpression
-        //                ? AddJsonProjection(jsonProjectionExpression, null)
-        //                : Constant(AddToProjection((SqlExpression)expression, projectionMember.Last?.Name));
-        //    }
-
-        //    _projectionMapping.Clear();
-        //    _projectionMapping = result;
-
-        //    return shaperExpression;
-        //}
-
         ConstantExpression AddEntityProjection(EntityProjectionExpression entityProjectionExpression)
         {
             var dictionary = new Dictionary<IProperty, int>();
@@ -1353,11 +1336,6 @@ public sealed partial class SelectExpression : TableExpressionBase
             if (entityProjectionExpression.DiscriminatorExpression != null)
             {
                 AddToProjection(entityProjectionExpression.DiscriminatorExpression, DiscriminatorColumnAlias);
-            }
-
-            if (!entityProjectionExpression.EntityType.IsMappedToJson())
-            {
-                return Constant(dictionary);
             }
 
             return Constant(dictionary);

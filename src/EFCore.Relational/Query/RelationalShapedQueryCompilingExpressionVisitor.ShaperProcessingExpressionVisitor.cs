@@ -405,8 +405,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
 
                     return Expression.Assign(binaryExpression.Left, updatedExpression);
                 }
-
-                if (newExpression.Arguments[0] is ParameterExpression valueBufferParameter
+                else if (newExpression.Arguments[0] is ParameterExpression valueBufferParameter
                     && _valueBufferParameterMapping.ContainsKey(valueBufferParameter))
                 {
                     _materializationContextParameterMapping[parameterExpression] = _valueBufferParameterMapping[valueBufferParameter];
@@ -415,6 +414,11 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                         new[] { Expression.Constant(ValueBuffer.Empty), newExpression.Arguments[1] });
 
                     return Expression.Assign(binaryExpression.Left, updatedExpression);
+                }
+                else
+                {
+                    // TODO: resource string
+                    throw new InvalidOperationException($"Unsupported argument to the MaterializationContext constructor: '{newExpression.Arguments[0]}'.");
                 }
             }
 
@@ -962,7 +966,11 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                                         includingEntityType, relatedEntityType, navigation, inverseNavigation).Compile()),
                                 Expression.Constant(_isTracking)));
                     }
-                    else if (includeExpression.Navigation.TargetEntityType.IsMappedToJson())
+
+
+                    else if (includeExpression.NavigationExpression is CollectionResultExpression
+                        || includeExpression.NavigationExpression is RelationalEntityShaperExpression)
+                    //else if (includeExpression.Navigation.TargetEntityType.IsMappedToJson())
                     {
                         var projectionBindingExpression = (includeExpression.NavigationExpression as CollectionResultExpression)?.ProjectionBindingExpression
                             ?? (ProjectionBindingExpression)((RelationalEntityShaperExpression)includeExpression.NavigationExpression).ValueBufferExpression;
@@ -995,6 +1003,11 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                     }
                     else
                     {
+                        if (includeExpression.Navigation.TargetEntityType.IsMappedToJson())
+                        {
+                            throw new InvalidOperationException("fghfkjghdfghfjdkhgkdh");
+                        }
+
                         var navigationExpression = Visit(includeExpression.NavigationExpression);
                         var entityType = entity.Type;
                         var navigation = includeExpression.Navigation;

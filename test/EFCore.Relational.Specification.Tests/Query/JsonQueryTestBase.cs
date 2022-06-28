@@ -92,7 +92,8 @@ public abstract class JsonQueryTestBase<TFixture> : QueryTestBase<TFixture>
                 AssertEqual(e.OwnedReferenceSharedLeaf, a.OwnedReferenceSharedLeaf);
                 AssertCollection(e.OwnedCollectionSharedBranch, a.OwnedCollectionSharedBranch, ordered: true);
                 Assert.Equal(e.SomethingSomething, a.SomethingSomething);
-            });
+            },
+            entryCount: 40);
 
 
     [ConditionalTheory]

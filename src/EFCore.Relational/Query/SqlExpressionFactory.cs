@@ -63,7 +63,6 @@ public class SqlExpressionFactory : ISqlExpressionFactory
             SqlBinaryExpression e => ApplyTypeMappingOnSqlBinary(e, typeMapping),
             SqlConstantExpression e => e.ApplyTypeMapping(typeMapping),
             SqlFragmentExpression e => e,
-            // maumar - apply default mapping should apply it to arguments also, like we do for other expressions
             SqlFunctionExpression e => e.ApplyTypeMapping(typeMapping),
             SqlParameterExpression e => e.ApplyTypeMapping(typeMapping),
             SqlUnaryExpression e => ApplyTypeMappingOnSqlUnary(e, typeMapping),
