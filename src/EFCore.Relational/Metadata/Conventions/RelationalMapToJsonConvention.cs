@@ -57,6 +57,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             var jsonColumnName = annotation?.Value as string;
             if (!string.IsNullOrEmpty(jsonColumnName))
             {
+                var sikson = entityTypeBuilder.Metadata.GetNavigations().ToList();
+
+
+
+
+
                 foreach (var navigation in entityTypeBuilder.Metadata.GetNavigations()
                     .Where(n => n.ForeignKey.IsOwnership
                         && n.DeclaringEntityType == entityTypeBuilder.Metadata

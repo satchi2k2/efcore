@@ -1409,6 +1409,12 @@ public static class RelationalPropertyExtensions
         IReadOnlyProperty property,
         in StoreObjectIdentifier storeObject)
     {
+        if (property.ToString() == "Property: JsonEntityBasic.OwnedCollectionSharedRoot#MyOwnedRootShared.OwnedReferenceSharedBranch#MyOwnedBranchShared.MyOwnedRootSharedId (no field, int) Shadow Required PK FK AfterSave:Throw"
+            || property.ToString() == "Property: JsonEntityBasic.OwnedReferenceSharedRoot#MyOwnedRootShared.OwnedCollectionSharedBranch#MyOwnedBranchShared.OwnedReferenceSharedLeaf#MyOwnedLeafShared.MyOwnedBranchSharedId (no field, int) Shadow Required PK FK AfterSave:Throw")
+        {
+            Console.WriteLine("gdfg");
+        }
+
         if (!property.IsPrimaryKey())
         {
             return null;
@@ -1440,6 +1446,10 @@ public static class RelationalPropertyExtensions
             }
             else
             {
+
+                var kupson = linkingRelationship.Properties.IndexOf(principalProperty);
+
+
                 principalProperty = linkingRelationship.PrincipalKey.Properties[linkingRelationship.Properties.IndexOf(principalProperty)];
             }
         }

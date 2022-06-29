@@ -1,6 +1,7 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Extensions;
 using Microsoft.EntityFrameworkCore.TestModels.JsonQuery;
 
 namespace Microsoft.EntityFrameworkCore.Query;
@@ -223,6 +224,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
         {
             b.OwnsOne(x => x.OwnedReferenceSharedBranch, bb =>
             {
+                //b.ToJson("json_reference_shared");
                 bb.Property(x => x.Fraction).HasPrecision(18, 2);
                 bb.OwnsOne(x => x.OwnedReferenceSharedLeaf);
                 bb.OwnsMany(x => x.OwnedCollectionSharedLeaf);
@@ -230,11 +232,17 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
             b.OwnsMany(x => x.OwnedCollectionSharedBranch, bb =>
             {
+                //b.ToJson("json_reference_shared");
                 bb.Property(x => x.Fraction).HasPrecision(18, 2);
                 bb.OwnsOne(x => x.OwnedReferenceSharedLeaf);
                 bb.OwnsMany(x => x.OwnedCollectionSharedLeaf);
             });
+
+            //b.ToJson("json_reference_shared");
         });
+
+        modelBuilder.Entity<JsonEntityBasic>().MapReferenceToJson(x => x.OwnedReferenceSharedRoot, "json_reference_shared");
+
 
         //modelBuilder.Entity<MyEntity>().Navigation(x => x.OwnedReferenceSharedRoot).IsRequired();
 
@@ -242,6 +250,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
         {
             b.OwnsOne(x => x.OwnedReferenceSharedBranch, bb =>
             {
+                //b.ToJson("json_collection_shared");
                 bb.Property(x => x.Fraction).HasPrecision(18, 2);
                 bb.OwnsOne(x => x.OwnedReferenceSharedLeaf);
                 bb.OwnsMany(x => x.OwnedCollectionSharedLeaf);
@@ -249,17 +258,20 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
             b.OwnsMany(x => x.OwnedCollectionSharedBranch, bb =>
             {
+                //b.ToJson("json_collection_shared");
                 bb.Property(x => x.Fraction).HasPrecision(18, 2);
                 bb.OwnsOne(x => x.OwnedReferenceSharedLeaf);
                 bb.OwnsMany(x => x.OwnedCollectionSharedLeaf);
             });
+            //b.ToJson("json_collection_shared");
         });
 
-        modelBuilder.Entity<JsonEntityBasic>().MapReferenceToJson(x => x.OwnedReferenceSharedRoot, "json_reference_shared");
+        //modelBuilder.Entity<JsonEntityBasic>().MapReferenceToJson(x => x.OwnedReferenceSharedRoot, "json_reference_shared");
         modelBuilder.Entity<JsonEntityBasic>().MapCollectionToJson(x => x.OwnedCollectionSharedRoot, "json_collection_shared");
 
         modelBuilder.Entity<JsonEntityCustomNaming>().OwnsOne(x => x.OwnedReferenceRoot, b =>
         {
+            //b.ToJson("json_reference_custom_naming");
             b.OwnsOne(x => x.OwnedReferenceBranch, bb =>
             {
                 //bb.Property(x => x.Fraction).HasColumnName("CustomFraction");
@@ -277,6 +289,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
         modelBuilder.Entity<JsonEntityCustomNaming>().OwnsMany(x => x.OwnedCollectionRoot, b =>
         {
+            //b.ToJson("json_collection_custom_naming");
             b.OwnsOne(x => x.OwnedReferenceBranch, bb =>
             {
                 //bb.Property(x => x.Fraction).HasColumnName("CustomFraction");
@@ -292,8 +305,9 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
         modelBuilder.Entity<JsonEntityCustomNaming>().MapReferenceToJson(x => x.OwnedReferenceRoot, "json_reference_custom_naming");
         modelBuilder.Entity<JsonEntityCustomNaming>().MapCollectionToJson(x => x.OwnedCollectionRoot, "json_collection_custom_naming");
 
-        modelBuilder.Entity<JsonEntitySingleOwned>().OwnsMany(x => x.OwnedCollection);
-        modelBuilder.Entity<JsonEntitySingleOwned>().MapCollectionToJson(x => x.OwnedCollection, "json_collection");
+        //modelBuilder.Entity<JsonEntitySingleOwned>().OwnsMany(x => x.OwnedCollection);
+        //modelBuilder.Entity<JsonEntitySingleOwned>().MapCollectionToJson(x => x.OwnedCollection, "json_collection");
 
+        modelBuilder.Entity<JsonEntitySingleOwned>().OwnsMany(x => x.OwnedCollection, b => b.ToJson("json_collection"));
     }
 }

@@ -1022,9 +1022,10 @@ public static class RelationalEntityTypeExtensions
             var mappedToJson = entityType.IsMappedToJson();
             var principalEntityType = foreignKey.PrincipalEntityType;
 
-            var pkPropertiesToMatch = mappedToJson
-                ? primaryKey.Properties.Take(foreignKey.Properties.Count).ToList().AsReadOnly()
-                : primaryKey.Properties;
+            var pkPropertiesToMatch = primaryKey.GetMappedKeyProperties().ToList().AsReadOnly();
+            //var pkPropertiesToMatch = mappedToJson
+            //    ? primaryKey.Properties.Take(foreignKey.Properties.Count).ToList().AsReadOnly()
+            //    : primaryKey.Properties;
 
             if (!foreignKey.PrincipalKey.IsPrimaryKey()
                 || principalEntityType == foreignKey.DeclaringEntityType
