@@ -145,6 +145,12 @@ public class RelationalModel : Annotatable, IRelationalModel
 
         foreach (var entityType in model.GetEntityTypes())
         {
+            if (entityType.Name.Contains("NonJsonRoot"))
+            {
+                Console.WriteLine("Fdf");
+            }
+
+
             AddDefaultMappings(databaseModel, entityType);
 
             AddTables(databaseModel, entityType, relationalTypeMappingSource);

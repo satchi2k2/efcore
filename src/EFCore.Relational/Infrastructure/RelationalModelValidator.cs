@@ -270,12 +270,6 @@ public class RelationalModelValidator : ModelValidator
         var tables = new Dictionary<StoreObjectIdentifier, List<IEntityType>>();
         foreach (var entityType in model.GetEntityTypes())
         {
-            // TODO: add proper validation for json
-            if (entityType.IsMappedToJson())
-            {
-                continue;
-            }
-
             var tableId = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table);
             if (tableId == null)
             {
@@ -319,6 +313,11 @@ public class RelationalModelValidator : ModelValidator
 
                 var (principalEntityTypes, optional) = GetPrincipalEntityTypes(entityType);
                 if (!optional)
+                {
+                    continue;
+                }
+
+                if (entityType.IsMappedToJson())
                 {
                     continue;
                 }
@@ -406,12 +405,16 @@ public class RelationalModelValidator : ModelValidator
             return;
         }
 
-        // TODO: add proper validation for json-mapped types instead of filtering them out
-        var unvalidatedTypes = new HashSet<IEntityType>(mappedTypes/*.Where(x => !x.IsMappedToJson())*/);
+        var unvalidatedTypes = new HashSet<IEntityType>(mappedTypes);
         IEntityType? root = null;
         foreach (var mappedType in mappedTypes)
         {
             if (mappedType.BaseType != null && unvalidatedTypes.Contains(mappedType.BaseType))
+            {
+                continue;
+            }
+
+            if (mappedType.IsMappedToJson())
             {
                 continue;
             }
@@ -459,6 +462,7 @@ public class RelationalModelValidator : ModelValidator
             var key = entityType.FindPrimaryKey();
             var comment = entityType.GetComment();
             var isExcluded = entityType.IsTableExcludedFromMigrations(storeObject);
+            var isOwnedNonJson = entityType.IsOwned() && !entityType.IsMappedToJson();
             var typesToValidateLeft = typesToValidate.Count;
             var directlyConnectedTypes = unvalidatedTypes.Where(
                 unvalidatedType =>
@@ -511,6 +515,13 @@ public class RelationalModelValidator : ModelValidator
                             storeObject.DisplayName(),
                             entityType.DisplayName(),
                             nextEntityType.DisplayName()));
+                }
+
+                if (isOwnedNonJson && nextEntityType.IsMappedToJson())
+                {
+                    // TODO: resource string
+                    // also allow this later
+                    throw new InvalidOperationException("Json mapped type can't be owned by a non-json owned type. Only regular entity types or json mapped types are allowed.");
                 }
 
                 typesToValidate.Enqueue(nextEntityType);
@@ -678,10 +689,33 @@ public class RelationalModelValidator : ModelValidator
     }
 
     private static bool IsIdentifyingPrincipal(IEntityType dependentEntityType, IEntityType principalEntityType)
-        => dependentEntityType.FindForeignKeys(dependentEntityType.FindPrimaryKey()!.Properties)
-            .Any(
-                fk => fk.PrincipalKey.IsPrimaryKey()
-                    && fk.PrincipalEntityType == principalEntityType);
+    {
+        // TODO: rename this method?
+        var dependentKeyProperties = dependentEntityType.IsMappedToJson()
+            && !dependentEntityType.FindOwnership()!.IsUnique
+            ? dependentEntityType.FindPrimaryKey()!.Properties.ToArray()[..^1]
+            : dependentEntityType.FindPrimaryKey()!.Properties;
+
+        return dependentEntityType.FindForeignKeys(dependentKeyProperties)
+            .Any(fk => fk.PrincipalKey.IsPrimaryKey() && fk.PrincipalEntityType == principalEntityType);
+    }
+
+        //=> dependentEntityType.FindForeignKeys(dependentEntityType.FindPrimaryKey()!.Properties)
+        //    .Any(
+        //        fk => fk.PrincipalKey.IsPrimaryKey()
+        //            && fk.PrincipalEntityType == principalEntityType);
+
+
+    //=> dependentEntityType.FindForeignKeys(dependentEntityType.FindPrimaryKey()!.Properties)
+    //    .Any(
+    //        fk => fk.PrincipalKey.IsPrimaryKey()
+    //            && fk.PrincipalEntityType == principalEntityType);
+
+    //=> dependentEntityType.FindForeignKeys(dependentEntityType.FindPrimaryKey()!.GetMappedKeyProperties())
+    //    .Any(
+    //        fk => fk.PrincipalKey.IsPrimaryKey()
+    //            && fk.PrincipalEntityType == principalEntityType);
+
 
     /// <summary>
     ///     Validates the compatibility of properties sharing columns in a given table-like object.
@@ -705,6 +739,16 @@ public class RelationalModelValidator : ModelValidator
         var propertyMappings = new Dictionary<string, IProperty>();
         foreach (var entityType in mappedTypes)
         {
+            if (entityType.IsMappedToJson())
+            {
+                // skip this validation for json types, they their properties could clash with properties on the owner entity
+                // given that the table they map to is the same, and the name could be the same, but in fact they are stored in separate json column
+                // so conflict is a false positive
+                // TODO: we can add some validation (later), e.g. when two properties map to the same element name on the same level in json document
+                // maybe have a separate Validation step for json documents in general?
+                continue;
+            }
+
             if (missingConcurrencyTokens != null)
             {
                 missingConcurrencyTokens.Clear();
@@ -725,11 +769,6 @@ public class RelationalModelValidator : ModelValidator
                     continue;
                 }
                 
-                if (columnName == null)
-                {
-                    continue;
-                }
-
                 missingConcurrencyTokens?.Remove(columnName);
                 if (!propertyMappings.TryGetValue(columnName, out var duplicateProperty))
                 {
@@ -1176,6 +1215,16 @@ public class RelationalModelValidator : ModelValidator
         var keyMappings = new Dictionary<string, IKey>();
         foreach (var key in mappedTypes.SelectMany(et => et.GetDeclaredKeys()))
         {
+            // skip validation for keys of json collection entities
+            // (or rather entities that have collection in the navigation chain leading to them)
+            if (NavigationChainContainsJsonCollection(key.DeclaringEntityType))
+            {
+                continue;
+            }
+
+            var foo = key.DeclaringEntityType.IsMappedToJson();
+            var bar = !key.DeclaringEntityType.FindOwnership()?.IsUnique;
+
             var keyName = key.GetName(storeObject, logger);
             if (keyName == null)
             {
@@ -1190,6 +1239,24 @@ public class RelationalModelValidator : ModelValidator
 
             ValidateCompatible(key, duplicateKey, keyName, storeObject, logger);
         }
+    }
+
+    private bool NavigationChainContainsJsonCollection(IEntityType entityType)
+    {
+        if (entityType.IsMappedToJson())
+        {
+            var ownership = entityType.FindOwnership()!;
+            if (!ownership.IsUnique)
+            {
+                return true;
+            }
+            else
+            {
+                return NavigationChainContainsJsonCollection(ownership.PrincipalEntityType);
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

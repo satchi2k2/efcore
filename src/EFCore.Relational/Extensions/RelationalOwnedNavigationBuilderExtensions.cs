@@ -24,5 +24,17 @@ namespace Microsoft.EntityFrameworkCore
 
             return builder;
         }
+
+        /// <summary>
+        /// TODO
+        /// </summary>
+        public static OwnedNavigationBuilder ToJson(
+            this OwnedNavigationBuilder builder,
+            string jsonColumnName)
+        {
+            builder.OwnedEntityType.SetMappedToJsonColumnName(jsonColumnName);
+
+            return builder;
+        }
     }
 }
