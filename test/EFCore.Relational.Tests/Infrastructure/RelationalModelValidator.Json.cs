@@ -82,6 +82,25 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         }
 
         [ConditionalFact]
+        public void Throw_when_json_entity_references_another_non_json_entity_via_reference()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+            modelBuilder.Entity<ValidatorJsonEntityReferencedEntity>();
+            modelBuilder.Entity<ValidatorJsonEntityJsonReferencingRegularEntity>(b =>
+            {
+                b.OwnsOne(x => x.Owned, bb =>
+                {
+                    bb.ToJson("reference");
+                    bb.HasOne(x => x.Reference).WithOne().HasForeignKey<ValidatorJsonOwnedReferencingRegularEntity>(x => x.Fk);
+                });
+            });
+
+            VerifyError(
+                "Entity type 'ValidatorJsonOwnedReferencingRegularEntity' is mapped to json and has navigation to a regular entity which is not the owner.",
+                modelBuilder);
+        }
+
+        [ConditionalFact]
         public void Tpt_not_supported_for_owner_of_json_entity_on_base()
         {
             var modelBuilder = CreateConventionModelBuilder();
@@ -106,6 +125,7 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                 modelBuilder);
         }
 
+        [ConditionalFact]
         public void Tpt_not_supported_for_owner_of_json_entity_on_derived()
         {
             var modelBuilder = CreateConventionModelBuilder();
@@ -127,6 +147,20 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                 modelBuilder);
         }
 
+        [ConditionalFact]
+        public void Tpc_not_supported_for_owner_of_json_entity()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+            modelBuilder.Entity<ValidatorJsonEntityInheritanceAbstract>();
+            modelBuilder.Entity<ValidatorJsonEntityInheritanceBase>(b =>
+            {
+                b.UseTpcMappingStrategy();
+                b.OwnsOne(x => x.ReferenceOnBase, bb => bb.ToJson("reference"));
+            });
+
+            Validate(modelBuilder);
+        }
+
         private class ValidatorJsonEntityBasic
         {
             public int Id { get; set; }
@@ -134,7 +168,11 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
             public List<ValidatorJsonOwnedRoot> OwnedCollection { get; set; }
         }
 
-        private class ValidatorJsonEntityInheritanceBase
+        private abstract class ValidatorJsonEntityInheritanceAbstract
+        {
+        }
+
+        private class ValidatorJsonEntityInheritanceBase : ValidatorJsonEntityInheritanceAbstract
         {
             public int Id { get; set; }
             public string Name { get; set; }
@@ -174,6 +212,26 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
         private class ValidatorJsonOwnedExplicitOrdinal
         {
             public int Ordinal { get; set; }
+            public DateTime Date { get; set; }
+        }
+
+        private class ValidatorJsonEntityJsonReferencingRegularEntity
+        {
+            public int Id { get; set; }
+            public ValidatorJsonOwnedReferencingRegularEntity Owned { get; set; }
+        }
+
+        public class ValidatorJsonOwnedReferencingRegularEntity
+        {
+            public string Foo { get; set; }
+
+            public int? Fk { get; set; }
+            public ValidatorJsonEntityReferencedEntity Reference { get; set; }
+        }
+
+        public class ValidatorJsonEntityReferencedEntity
+        {
+            public int Id { get; set; }
             public DateTime Date { get; set; }
         }
     }

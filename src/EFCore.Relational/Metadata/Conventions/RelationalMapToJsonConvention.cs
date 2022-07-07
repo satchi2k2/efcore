@@ -82,7 +82,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             IConventionNavigationBuilder navigationBuilder,
             IConventionContext<IConventionNavigationBuilder> context)
         {
-            if (navigationBuilder.Metadata.DeclaringEntityType.MappedToJsonColumnName() is string jsonColumnName)
+            if (navigationBuilder.Metadata.DeclaringEntityType.MappedToJsonColumnName() is string jsonColumnName
+                && navigationBuilder.Metadata.ForeignKey.IsOwnership)
             {
                 navigationBuilder.Metadata.TargetEntityType.SetMappedToJsonColumnName(jsonColumnName);
             }

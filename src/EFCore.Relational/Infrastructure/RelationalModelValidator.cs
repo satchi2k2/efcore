@@ -1965,34 +1965,58 @@ public class RelationalModelValidator : ModelValidator
                 throw new InvalidOperationException("Table splitting is not supported for eneities containing entities mapped to json.");
             }
 
-            ValidateJsonEntityOwnerships(mappedTypes);
-            ValidateJsonEntityInheritanceMapping(mappedTypes);
-            ValidateJsonEntityKeys(table, mappedTypes);
-            ValidateJsonEntityProperties(table, mappedTypes);
+            var rootAggregateType = mappedTypes.Where(x => !x.IsOwned()).Single();
+            var rootAggregateKeyProperties = rootAggregateType.FindPrimaryKey()!.Properties;
+            var rootAggregateKeyColumnNames = new string[rootAggregateKeyProperties.Count];
+
+            ValidateJsonEntityRootAggregate(table, rootAggregateType);
+
+            foreach (var jsonEntityType in mappedTypes.Where(x => x.IsMappedToJson()))
+            {
+                ValidateJsonEntityNavigations(table, jsonEntityType);
+                ValidateJsonEntityInheritanceMapping(table, jsonEntityType);
+                ValidateJsonEntityKey(table, rootAggregateKeyColumnNames, jsonEntityType);
+                ValidateJsonEntityProperties(table, jsonEntityType);
+            }
         }
     }
 
     /// <summary>
     /// TODO
     /// </summary>
-    protected virtual void ValidateJsonEntityOwnerships(IEnumerable<IEntityType> entityTypes)
+    protected virtual void ValidateJsonEntityRootAggregate(
+        in StoreObjectIdentifier storeObject,
+        IEntityType rootAggregateType)
     {
-        foreach (var entityType in entityTypes)
+        // if it has inheritance it must be TPH
+        // throw if an entity type is mapped to JSON, but the principal type is not mapped to a table or view
+        // (and add a note to support this for raw SQL and function mappings in #19970 and #21627)
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    protected virtual void ValidateJsonEntityNavigations(
+        in StoreObjectIdentifier storeObject,
+        IEntityType jsonEntityType)
+    {
+        var ownership = jsonEntityType.FindOwnership()!;
+
+        if (ownership.PrincipalEntityType.IsOwned()
+            && !ownership.PrincipalEntityType.IsMappedToJson())
         {
-            if (!entityType.IsMappedToJson())
-            {
-                continue;
-            }
+            // TODO: resource string
+            // also allow this later
+            throw new InvalidOperationException(
+                "Json mapped type can't be owned by a non-json owned type. Only regular entity types or json mapped types are allowed.");
+        }
 
-            var ownership = entityType.FindOwnership()!;
-
-            if (ownership.PrincipalEntityType.IsOwned()
-                && !ownership.PrincipalEntityType.IsMappedToJson())
+        foreach (var navigation in jsonEntityType.GetDeclaredNavigations())
+        {
+            if (!navigation.ForeignKey.IsOwnership)
             {
-                // TODO: resource string
-                // also allow this later
                 throw new InvalidOperationException(
-                    "Json mapped type can't be owned by a non-json owned type. Only regular entity types or json mapped types are allowed.");
+                    $"Entity type '{jsonEntityType.DisplayName()}' is mapped to json and has navigation to a regular entity which is not the owner.");
             }
         }
     }
@@ -2000,86 +2024,48 @@ public class RelationalModelValidator : ModelValidator
     /// <summary>
     /// TODO
     /// </summary>
-    protected virtual void ValidateJsonEntityInheritanceMapping(IEnumerable<IEntityType> entityTypes)
+    protected virtual void ValidateJsonEntityInheritanceMapping(
+        in StoreObjectIdentifier storeObject,
+        IEntityType jsonEntityType)
     {
-        foreach (var entityType in entityTypes)
-        {
-            var mappingStrategy = (string?)entityType[RelationalAnnotationNames.MappingStrategy];
-            if (mappingStrategy != null)
-            {
-                if (entityType.IsMappedToJson())
-                {
-                    throw new InvalidOperationException("Inheritance is not supported for entites mapped to json.");
-                }
-                else if (!entityType.IsOwned())
-                {
-                    if (mappingStrategy != RelationalAnnotationNames.TphMappingStrategy)
-                    {
-                        throw new InvalidOperationException("Only Table-per-hierarchy inheritance is supported for entities owning entities mapped to json.");
-                    }
-                }
-            }
-        }
+        // no inheritance allowed
     }
 
     /// <summary>
     /// TODO
     /// </summary>
-    protected virtual void ValidateJsonEntityKeys(in StoreObjectIdentifier storeObject, IEnumerable<IEntityType> entityTypes)
+    protected virtual void ValidateJsonEntityKey(
+        in StoreObjectIdentifier storeObject,
+        string[] rootAggregateKeyColumnNames,
+        IEntityType jsonEntityType)
     {
-        string[]? expectedPrimaryKeyColumnNames = null;
-        foreach (var entityType in entityTypes)
+        var mappedPrimaryKeyProperties = jsonEntityType.FindPrimaryKey()!.GetMappedKeyProperties();
+        if (mappedPrimaryKeyProperties.Count != rootAggregateKeyColumnNames.Length)
         {
-            if (entityType.IsOwned())
-            {
-                continue;
-            }
+            throw new InvalidOperationException(
+                $"Entity type '{jsonEntityType.DisplayName()}' has incorrect number of primary key properties.");
+        }
 
-            var keyProperties = entityType.FindPrimaryKey()!.Properties;
-            expectedPrimaryKeyColumnNames = new string[keyProperties.Count];
+        if (NavigationChainContainsJsonCollection(jsonEntityType))
+        {
+            // for collection entities, make sure that ordinal key is not explicitly defined
+            var ordinalKeyProperty = jsonEntityType.FindPrimaryKey()!.Properties.Last();
+            if (!ordinalKeyProperty.IsShadowProperty() || ordinalKeyProperty.ClrType != typeof(int) || !ordinalKeyProperty.Name.EndsWith("Id", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"Entity type '{jsonEntityType.DisplayName()}' is part of collection mapped to json and has it's ordinal key defined explicitly. Only implicitly defined ordinal keys are supported.");
+            }
+        }
+        else
+        {
+            // for reference entities, make sure all key properties map to the correct columns
+            var keyProperties = jsonEntityType.FindPrimaryKey()!.GetMappedKeyProperties();
             for (var i = 0; i < keyProperties.Count; i++)
             {
-                expectedPrimaryKeyColumnNames[i] = keyProperties[i].GetColumnName(storeObject)!;
-            }
-
-            // this will be more complicated if we allow table splitting
-            break;
-        }
-
-        Debug.Assert(expectedPrimaryKeyColumnNames != null);
-        foreach (var entityType in entityTypes)
-        {
-            if (!entityType.IsMappedToJson())
-            {
-                continue;
-            }
-
-            // can we have keyless entities here?
-            var mappedPrimaryKeyProperties = entityType.FindPrimaryKey()!.GetMappedKeyProperties();
-            if (mappedPrimaryKeyProperties.Count != expectedPrimaryKeyColumnNames.Length)
-            {
-                throw new InvalidOperationException($"Entity type '{entityType.DisplayName()}' has incorrect number of primary key properties.");
-            }
-
-            if (NavigationChainContainsJsonCollection(entityType))
-            {
-                // for collection entities, make sure that ordinal key is not explicitly defined
-                var ordinalKeyProperty = entityType.FindPrimaryKey()!.Properties.Last();
-                if (!ordinalKeyProperty.IsShadowProperty() || ordinalKeyProperty.ClrType != typeof(int) || !ordinalKeyProperty.Name.EndsWith("Id", StringComparison.Ordinal))
+                if (rootAggregateKeyColumnNames[i] != keyProperties[i].GetColumnName(storeObject))
                 {
-                    throw new InvalidOperationException($"Entity type '{entityType.DisplayName()}' is part of collection mapped to json and has it's ordinal key defined explicitly. Only implicitly defined ordinal keys are supported.");
-                }
-            }
-            else
-            {
-                // for reference entities, make sure all key properties map to the correct columns
-                var keyProperties = entityType.FindPrimaryKey()!.GetMappedKeyProperties();
-                for (var i = 0; i < keyProperties.Count; i++)
-                {
-                    if (expectedPrimaryKeyColumnNames[i] != keyProperties[i].GetColumnName(storeObject))
-                    {
-                        throw new InvalidOperationException($"Entity type '{entityType.DisplayName()}' has a key property '{keyProperties[i].Name}' which maps to the wrong column. Expected column name: '{expectedPrimaryKeyColumnNames[i]}'.");
-                    }
+                    throw new InvalidOperationException(
+                        $"Entity type '{jsonEntityType.DisplayName()}' has a key property '{keyProperties[i].Name}' which maps to the wrong column. Expected column name: '{rootAggregateKeyColumnNames[i]}'.");
                 }
             }
         }
@@ -2088,23 +2074,14 @@ public class RelationalModelValidator : ModelValidator
     /// <summary>
     /// TODO
     /// </summary>
-    public virtual void ValidateJsonEntityProperties(in StoreObjectIdentifier storeObject, IEnumerable<IEntityType> entityTypes)
+    public virtual void ValidateJsonEntityProperties(
+        in StoreObjectIdentifier storeObject,
+        IEntityType jsonEntityType)
     {
-        foreach (var entityType in entityTypes)
+        foreach (var property in jsonEntityType.GetDeclaredProperties().Where(p => !p.IsKey()))
         {
-            if (!entityType.IsMappedToJson())
-            {
-                continue;
-            }
-
-            foreach (var property in entityType.GetDeclaredProperties().Where(p => !p.IsKey()))
-            {
-                var column = property.FindColumn(storeObject);
-            }
-
-            // properties should not have default values specified on them
+            var column = property.FindColumn(storeObject);
         }
-
     }
 
     /// <summary>
