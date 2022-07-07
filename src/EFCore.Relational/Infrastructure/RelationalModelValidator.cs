@@ -3,6 +3,7 @@
 
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -59,6 +60,7 @@ public class RelationalModelValidator : ModelValidator
         ValidateBoolsWithDefaults(model, logger);
         ValidateIndexProperties(model, logger);
         ValidateTriggers(model, logger);
+        ValidateJsonEntities(model, logger);
     }
 
     /// <summary>
@@ -267,25 +269,26 @@ public class RelationalModelValidator : ModelValidator
         IModel model,
         IDiagnosticsLogger<DbLoggerCategory.Model.Validation> logger)
     {
-        var tables = new Dictionary<StoreObjectIdentifier, List<IEntityType>>();
-        foreach (var entityType in model.GetEntityTypes())
-        {
-            var tableId = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table);
-            if (tableId == null)
-            {
-                continue;
-            }
+        //var tables = new Dictionary<StoreObjectIdentifier, List<IEntityType>>();
+        //foreach (var entityType in model.GetEntityTypes())
+        //{
+        //    var tableId = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table);
+        //    if (tableId == null)
+        //    {
+        //        continue;
+        //    }
 
-            var table = tableId.Value;
-            if (!tables.TryGetValue(table, out var mappedTypes))
-            {
-                mappedTypes = new List<IEntityType>();
-                tables[table] = mappedTypes;
-            }
+        //    var table = tableId.Value;
+        //    if (!tables.TryGetValue(table, out var mappedTypes))
+        //    {
+        //        mappedTypes = new List<IEntityType>();
+        //        tables[table] = mappedTypes;
+        //    }
 
-            mappedTypes.Add(entityType);
-        }
+        //    mappedTypes.Add(entityType);
+        //}
 
+        var tables = BuildSharedTableEntityMap(model.GetEntityTypes().Where(e => !e.IsMappedToJson()));
         foreach (var (table, mappedTypes) in tables)
         {
             ValidateSharedTableCompatibility(mappedTypes, table, logger);
@@ -313,11 +316,6 @@ public class RelationalModelValidator : ModelValidator
 
                 var (principalEntityTypes, optional) = GetPrincipalEntityTypes(entityType);
                 if (!optional)
-                {
-                    continue;
-                }
-
-                if (entityType.IsMappedToJson())
                 {
                     continue;
                 }
@@ -389,6 +387,30 @@ public class RelationalModelValidator : ModelValidator
         }
     }
 
+    private Dictionary<StoreObjectIdentifier, List<IEntityType>> BuildSharedTableEntityMap(IEnumerable<IEntityType> entityTypes)
+    {
+        var result = new Dictionary<StoreObjectIdentifier, List<IEntityType>>();
+        foreach (var entityType in entityTypes)
+        {
+            var tableId = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table);
+            if (tableId == null)
+            {
+                continue;
+            }
+
+            var table = tableId.Value;
+            if (!result.TryGetValue(table, out var mappedTypes))
+            {
+                mappedTypes = new List<IEntityType>();
+                result[table] = mappedTypes;
+            }
+
+            mappedTypes.Add(entityType);
+        }
+
+        return result;
+    }
+
     /// <summary>
     ///     Validates the compatibility of entity types sharing a given table.
     /// </summary>
@@ -410,11 +432,6 @@ public class RelationalModelValidator : ModelValidator
         foreach (var mappedType in mappedTypes)
         {
             if (mappedType.BaseType != null && unvalidatedTypes.Contains(mappedType.BaseType))
-            {
-                continue;
-            }
-
-            if (mappedType.IsMappedToJson())
             {
                 continue;
             }
@@ -462,7 +479,6 @@ public class RelationalModelValidator : ModelValidator
             var key = entityType.FindPrimaryKey();
             var comment = entityType.GetComment();
             var isExcluded = entityType.IsTableExcludedFromMigrations(storeObject);
-            var isOwnedNonJson = entityType.IsOwned() && !entityType.IsMappedToJson();
             var typesToValidateLeft = typesToValidate.Count;
             var directlyConnectedTypes = unvalidatedTypes.Where(
                 unvalidatedType =>
@@ -515,13 +531,6 @@ public class RelationalModelValidator : ModelValidator
                             storeObject.DisplayName(),
                             entityType.DisplayName(),
                             nextEntityType.DisplayName()));
-                }
-
-                if (isOwnedNonJson && nextEntityType.IsMappedToJson())
-                {
-                    // TODO: resource string
-                    // also allow this later
-                    throw new InvalidOperationException("Json mapped type can't be owned by a non-json owned type. Only regular entity types or json mapped types are allowed.");
                 }
 
                 typesToValidate.Enqueue(nextEntityType);
@@ -689,33 +698,21 @@ public class RelationalModelValidator : ModelValidator
     }
 
     private static bool IsIdentifyingPrincipal(IEntityType dependentEntityType, IEntityType principalEntityType)
-    {
-        // TODO: rename this method?
-        var dependentKeyProperties = dependentEntityType.IsMappedToJson()
-            && !dependentEntityType.FindOwnership()!.IsUnique
-            ? dependentEntityType.FindPrimaryKey()!.Properties.ToArray()[..^1]
-            : dependentEntityType.FindPrimaryKey()!.Properties;
+        => dependentEntityType.FindForeignKeys(dependentEntityType.FindPrimaryKey()!.Properties)
+            .Any(
+                fk => fk.PrincipalKey.IsPrimaryKey()
+                    && fk.PrincipalEntityType == principalEntityType);
 
-        return dependentEntityType.FindForeignKeys(dependentKeyProperties)
-            .Any(fk => fk.PrincipalKey.IsPrimaryKey() && fk.PrincipalEntityType == principalEntityType);
-    }
+    //{
+    //    // TODO: rename this method?
+    //    var dependentKeyProperties = dependentEntityType.IsMappedToJson()
+    //        && !dependentEntityType.FindOwnership()!.IsUnique
+    //        ? dependentEntityType.FindPrimaryKey()!.Properties.ToArray()[..^1]
+    //        : dependentEntityType.FindPrimaryKey()!.Properties;
 
-        //=> dependentEntityType.FindForeignKeys(dependentEntityType.FindPrimaryKey()!.Properties)
-        //    .Any(
-        //        fk => fk.PrincipalKey.IsPrimaryKey()
-        //            && fk.PrincipalEntityType == principalEntityType);
-
-
-    //=> dependentEntityType.FindForeignKeys(dependentEntityType.FindPrimaryKey()!.Properties)
-    //    .Any(
-    //        fk => fk.PrincipalKey.IsPrimaryKey()
-    //            && fk.PrincipalEntityType == principalEntityType);
-
-    //=> dependentEntityType.FindForeignKeys(dependentEntityType.FindPrimaryKey()!.GetMappedKeyProperties())
-    //    .Any(
-    //        fk => fk.PrincipalKey.IsPrimaryKey()
-    //            && fk.PrincipalEntityType == principalEntityType);
-
+    //    return dependentEntityType.FindForeignKeys(dependentKeyProperties)
+    //        .Any(fk => fk.PrincipalKey.IsPrimaryKey() && fk.PrincipalEntityType == principalEntityType);
+    //}
 
     /// <summary>
     ///     Validates the compatibility of properties sharing columns in a given table-like object.
@@ -739,16 +736,6 @@ public class RelationalModelValidator : ModelValidator
         var propertyMappings = new Dictionary<string, IProperty>();
         foreach (var entityType in mappedTypes)
         {
-            if (entityType.IsMappedToJson())
-            {
-                // skip this validation for json types, they their properties could clash with properties on the owner entity
-                // given that the table they map to is the same, and the name could be the same, but in fact they are stored in separate json column
-                // so conflict is a false positive
-                // TODO: we can add some validation (later), e.g. when two properties map to the same element name on the same level in json document
-                // maybe have a separate Validation step for json documents in general?
-                continue;
-            }
-
             if (missingConcurrencyTokens != null)
             {
                 missingConcurrencyTokens.Clear();
@@ -1221,9 +1208,6 @@ public class RelationalModelValidator : ModelValidator
             {
                 continue;
             }
-
-            var foo = key.DeclaringEntityType.IsMappedToJson();
-            var bar = !key.DeclaringEntityType.FindOwnership()?.IsUnique;
 
             var keyName = key.GetName(storeObject, logger);
             if (keyName == null)
@@ -1958,6 +1942,169 @@ public class RelationalModelValidator : ModelValidator
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    protected virtual void ValidateJsonEntities(
+        IModel model,
+        IDiagnosticsLogger<DbLoggerCategory.Model.Validation> logger)
+    {
+        var tables = BuildSharedTableEntityMap(model.GetEntityTypes());
+        foreach (var (table, mappedTypes) in tables)
+        {
+            if (mappedTypes.All(x => !x.IsMappedToJson()))
+            {
+                continue;
+            }
+
+            if (mappedTypes.Count(x => !x.IsOwned()) > 1)
+            {
+                // TODO: blocking just in case for now, but it *should* be fine to enable this
+                throw new InvalidOperationException("Table splitting is not supported for eneities containing entities mapped to json.");
+            }
+
+            ValidateJsonEntityOwnerships(mappedTypes);
+            ValidateJsonEntityInheritanceMapping(mappedTypes);
+            ValidateJsonEntityKeys(table, mappedTypes);
+            ValidateJsonEntityProperties(table, mappedTypes);
+        }
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    protected virtual void ValidateJsonEntityOwnerships(IEnumerable<IEntityType> entityTypes)
+    {
+        foreach (var entityType in entityTypes)
+        {
+            if (!entityType.IsMappedToJson())
+            {
+                continue;
+            }
+
+            var ownership = entityType.FindOwnership()!;
+
+            if (ownership.PrincipalEntityType.IsOwned()
+                && !ownership.PrincipalEntityType.IsMappedToJson())
+            {
+                // TODO: resource string
+                // also allow this later
+                throw new InvalidOperationException(
+                    "Json mapped type can't be owned by a non-json owned type. Only regular entity types or json mapped types are allowed.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    protected virtual void ValidateJsonEntityInheritanceMapping(IEnumerable<IEntityType> entityTypes)
+    {
+        foreach (var entityType in entityTypes)
+        {
+            var mappingStrategy = (string?)entityType[RelationalAnnotationNames.MappingStrategy];
+            if (mappingStrategy != null)
+            {
+                if (entityType.IsMappedToJson())
+                {
+                    throw new InvalidOperationException("Inheritance is not supported for entites mapped to json.");
+                }
+                else if (!entityType.IsOwned())
+                {
+                    if (mappingStrategy != RelationalAnnotationNames.TphMappingStrategy)
+                    {
+                        throw new InvalidOperationException("Only Table-per-hierarchy inheritance is supported for entities owning entities mapped to json.");
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    protected virtual void ValidateJsonEntityKeys(in StoreObjectIdentifier storeObject, IEnumerable<IEntityType> entityTypes)
+    {
+        string[]? expectedPrimaryKeyColumnNames = null;
+        foreach (var entityType in entityTypes)
+        {
+            if (entityType.IsOwned())
+            {
+                continue;
+            }
+
+            var keyProperties = entityType.FindPrimaryKey()!.Properties;
+            expectedPrimaryKeyColumnNames = new string[keyProperties.Count];
+            for (var i = 0; i < keyProperties.Count; i++)
+            {
+                expectedPrimaryKeyColumnNames[i] = keyProperties[i].GetColumnName(storeObject)!;
+            }
+
+            // this will be more complicated if we allow table splitting
+            break;
+        }
+
+        Debug.Assert(expectedPrimaryKeyColumnNames != null);
+        foreach (var entityType in entityTypes)
+        {
+            if (!entityType.IsMappedToJson())
+            {
+                continue;
+            }
+
+            // can we have keyless entities here?
+            var mappedPrimaryKeyProperties = entityType.FindPrimaryKey()!.GetMappedKeyProperties();
+            if (mappedPrimaryKeyProperties.Count != expectedPrimaryKeyColumnNames.Length)
+            {
+                throw new InvalidOperationException($"Entity type '{entityType.DisplayName()}' has incorrect number of primary key properties.");
+            }
+
+            if (NavigationChainContainsJsonCollection(entityType))
+            {
+                // for collection entities, make sure that ordinal key is not explicitly defined
+                var ordinalKeyProperty = entityType.FindPrimaryKey()!.Properties.Last();
+                if (!ordinalKeyProperty.IsShadowProperty() || ordinalKeyProperty.ClrType != typeof(int) || !ordinalKeyProperty.Name.EndsWith("Id", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException($"Entity type '{entityType.DisplayName()}' is part of collection mapped to json and has it's ordinal key defined explicitly. Only implicitly defined ordinal keys are supported.");
+                }
+            }
+            else
+            {
+                // for reference entities, make sure all key properties map to the correct columns
+                var keyProperties = entityType.FindPrimaryKey()!.GetMappedKeyProperties();
+                for (var i = 0; i < keyProperties.Count; i++)
+                {
+                    if (expectedPrimaryKeyColumnNames[i] != keyProperties[i].GetColumnName(storeObject))
+                    {
+                        throw new InvalidOperationException($"Entity type '{entityType.DisplayName()}' has a key property '{keyProperties[i].Name}' which maps to the wrong column. Expected column name: '{expectedPrimaryKeyColumnNames[i]}'.");
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public virtual void ValidateJsonEntityProperties(in StoreObjectIdentifier storeObject, IEnumerable<IEntityType> entityTypes)
+    {
+        foreach (var entityType in entityTypes)
+        {
+            if (!entityType.IsMappedToJson())
+            {
+                continue;
+            }
+
+            foreach (var property in entityType.GetDeclaredProperties().Where(p => !p.IsKey()))
+            {
+                var column = property.FindColumn(storeObject);
+            }
+
+            // properties should not have default values specified on them
+        }
+
     }
 
     /// <summary>

@@ -81,16 +81,72 @@ namespace Microsoft.EntityFrameworkCore.Infrastructure
                 modelBuilder);
         }
 
-        // TODO: add test for side by side
+        [ConditionalFact]
+        public void Tpt_not_supported_for_owner_of_json_entity_on_base()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+            modelBuilder.Entity<ValidatorJsonEntityInheritanceBase>(b =>
+            {
+                b.ToTable("Table1");
+                b.OwnsOne(x => x.ReferenceOnBase, bb =>
+                {
+                    bb.ToJson("reference");
+                });
+            });
 
+            modelBuilder.Entity<ValidatorJsonEntityInheritanceDerived>(b =>
+            {
+                b.HasBaseType<ValidatorJsonEntityInheritanceBase>();
+                b.ToTable("Table2");
+                b.Ignore(x => x.CollectionOnDerived);
+            });
 
+            VerifyError(
+                "Json mapped type can't be owned by a non-json owned type. Only regular entity types or json mapped types are allowed.",
+                modelBuilder);
+        }
+
+        public void Tpt_not_supported_for_owner_of_json_entity_on_derived()
+        {
+            var modelBuilder = CreateConventionModelBuilder();
+            modelBuilder.Entity<ValidatorJsonEntityInheritanceBase>(b =>
+            {
+                b.ToTable("Table1");
+                b.Ignore(x => x.ReferenceOnBase);
+                b.OwnsOne(x => x.ReferenceOnBase, bb => bb.ToJson("reference"));
+            });
+
+            modelBuilder.Entity<ValidatorJsonEntityInheritanceDerived>(b =>
+            {
+                b.ToTable("Table2");
+                b.OwnsMany(x => x.CollectionOnDerived, bb => bb.ToJson("collection"));;
+            });
+
+            VerifyError(
+                "Json mapped type can't be owned by a non-json owned type. Only regular entity types or json mapped types are allowed.",
+                modelBuilder);
+        }
 
         private class ValidatorJsonEntityBasic
         {
             public int Id { get; set; }
             public ValidatorJsonOwnedRoot OwnedReference { get; set; }
             public List<ValidatorJsonOwnedRoot> OwnedCollection { get; set; }
+        }
 
+        private class ValidatorJsonEntityInheritanceBase
+        {
+            public int Id { get; set; }
+            public string Name { get; set; }
+
+            public ValidatorJsonOwnedBranch ReferenceOnBase { get; set; }
+        }
+
+        private class ValidatorJsonEntityInheritanceDerived : ValidatorJsonEntityInheritanceBase
+        {
+            public bool Switch { get; set; }
+
+            public List<ValidatorJsonOwnedBranch> CollectionOnDerived { get; set; }
         }
 
         public class ValidatorJsonOwnedRoot
