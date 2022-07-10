@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 
 namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 
@@ -173,7 +174,7 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
     /// <inheritdoc />
     protected override Expression VisitJsonScalar(JsonScalarExpression jsonScalarExpression)
     {
-        if (jsonScalarExpression.Type == typeof(JsonElement))
+        if (jsonScalarExpression.TypeMapping is SqlServerJsonTypeMapping)
         {
             Sql.Append("JSON_QUERY(");
         }
@@ -183,7 +184,9 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
         }
 
         Visit(jsonScalarExpression.JsonColumn);
-        Sql.Append($",'{string.Join(".", new[] { "$" }.Concat(jsonScalarExpression.JsonPath))}')");
+
+        var jsonPathStrings = jsonScalarExpression.JsonPath.Select(x => (string)((SqlConstantExpression)x).Value!);
+        Sql.Append($",'{string.Join(".", new[] { "$" }.Concat(jsonPathStrings))}')");
         if (jsonScalarExpression.Type != typeof(JsonElement))
         {
             Sql.Append(" AS ");

@@ -1338,7 +1338,12 @@ public sealed partial class SelectExpression : TableExpressionBase
         {
             var additionalPath = new string[0];
 
-            additionalPath = jsonQueryExpression.JsonPath.Skip(jsonScalarToAdd.JsonPath.Count).ToArray();
+            // this will be more tricky once we support more complicated json path options
+            additionalPath = jsonQueryExpression.JsonPath
+                .Skip(jsonScalarToAdd.JsonPath.Count)
+                .Select(x => (string)((SqlConstantExpression)x).Value!)
+                .ToArray();
+
             var jsonColumnIndex = AddToProjection(jsonScalarToAdd);
 
             var keyInfo = new List<(IProperty, int)>();
@@ -3323,7 +3328,7 @@ public sealed partial class SelectExpression : TableExpressionBase
             }
 
             // clear up the json path - we start from empty path after pushdown
-            return jsonQueryExpression.Update(newJsonColumn, newKeyPropertyMap, new List<string>());
+            return jsonQueryExpression.Update(newJsonColumn, newKeyPropertyMap, new List<SqlExpression>());
         }
     }
 

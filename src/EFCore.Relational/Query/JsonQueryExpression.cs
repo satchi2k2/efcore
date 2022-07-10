@@ -22,7 +22,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             bool collection,
             IReadOnlyDictionary<IProperty, ColumnExpression> keyPropertyMap,
             Type type)
-            : this(entityType, jsonColumn, collection, keyPropertyMap, type, new List<string>())
+            : this(entityType, jsonColumn, collection, keyPropertyMap, type, new List<SqlExpression>())
         {
         }
 
@@ -32,7 +32,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             bool collection,
             IReadOnlyDictionary<IProperty, ColumnExpression> keyPropertyMap,
             Type type,
-            IReadOnlyList<string> jsonPath)
+            IReadOnlyList<SqlExpression> jsonPath)
         {
             Check.DebugAssert(entityType.FindPrimaryKey() != null, "primary key is null.");
 
@@ -62,7 +62,7 @@ namespace Microsoft.EntityFrameworkCore.Query
         /// <summary>
         /// TODO
         /// </summary>
-        public virtual IReadOnlyList<string> JsonPath { get; }
+        public virtual IReadOnlyList<SqlExpression> JsonPath { get; }
 
         /// <inheritdoc />
         public override ExpressionType NodeType => ExpressionType.Extension;
@@ -87,16 +87,14 @@ namespace Microsoft.EntityFrameworkCore.Query
                 return match;
             }
 
-            var pathSegment = property.GetJsonElementName();
+            var typeMapping = property.FindRelationalTypeMapping()!;
+            var pathSegment = new SqlConstantExpression(
+                Constant(property.GetJsonElementName()),
+                typeMapping);
+
+//            var pathSegment = property.GetJsonElementName();
             var newPath = JsonPath.ToList();
             newPath.Add(pathSegment);
-
-            var typeMapping = property.FindRelationalTypeMapping();
-            if (typeMapping == null)
-            {
-                // TODO: resource string (or not even check this and just bang in the line below?)
-                throw new InvalidOperationException("type mapping not found for property");
-            }
 
             return new JsonScalarExpression(
                 JsonColumn,
@@ -111,9 +109,16 @@ namespace Microsoft.EntityFrameworkCore.Query
         public virtual JsonQueryExpression BindNavigation(INavigation navigation)
         {
             var targetEntityType = navigation.TargetEntityType;
+            var typeMapping = (RelationalTypeMapping)targetEntityType.FindRuntimeAnnotationValue(
+                RelationalAnnotationNames.MapToJsonTypeMapping)!;
 
             var newJsonPath = JsonPath.ToList();
-            newJsonPath.Add(navigation.GetJsonElementName());
+            var pathSegment = new SqlConstantExpression(
+                Constant(navigation.GetJsonElementName()),
+                typeMapping);
+
+            newJsonPath.Add(pathSegment);
+            //newJsonPath.Add(navigation.GetJsonElementName());
 
             var newKeyPropertyMap = new Dictionary<IProperty, ColumnExpression>();
             var sourcePrimaryKeyProperties = EntityType.FindPrimaryKey()!.Properties.Take(_keyPropertyMap.Count).ToList();
@@ -122,16 +127,6 @@ namespace Microsoft.EntityFrameworkCore.Query
             {
                 newKeyPropertyMap[targetPrimaryKeyProperties[i]] = _keyPropertyMap[sourcePrimaryKeyProperties[i]];
             }
-
-            //var newKeyPropertyMap = new Dictionary<IProperty, ColumnExpression>();
-            //var foreignKeyProperties = navigation.ForeignKey.Properties;
-            //var primaryKeyProperties = EntityType.FindPrimaryKey()!.Properties;
-
-            //foreach (var (property, column) in _keyPropertyMap)
-            //{
-            //    var keyIndex = primaryKeyProperties.IndexOf(property);
-            //    newKeyPropertyMap[foreignKeyProperties[keyIndex]] = column;
-            //}
 
             return new JsonQueryExpression(targetEntityType, JsonColumn, navigation.IsCollection, newKeyPropertyMap, navigation.ClrType, newJsonPath);
         }
@@ -154,7 +149,11 @@ namespace Microsoft.EntityFrameworkCore.Query
         /// <summary>
         /// TODO
         /// </summary>
-        public virtual JsonQueryExpression Update(ColumnExpression jsonColumn, IReadOnlyDictionary<IProperty, ColumnExpression> keyPropertyMap, IReadOnlyList<string> jsonPath)
+        public virtual JsonQueryExpression Update(
+            ColumnExpression jsonColumn,
+            IReadOnlyDictionary<IProperty,
+            ColumnExpression> keyPropertyMap,
+            IReadOnlyList<SqlExpression> jsonPath)
             => jsonColumn != JsonColumn
             || keyPropertyMap.Count != _keyPropertyMap.Count
             || keyPropertyMap.Zip(_keyPropertyMap, (n, o) => n.Value != o.Value).Any(x => x)

@@ -15,7 +15,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions
             ColumnExpression jsonColumn,
             Type type,
             RelationalTypeMapping typeMapping,
-            IReadOnlyList<string> jsonPath)
+            IReadOnlyList<SqlExpression> jsonPath)
             : base(type, typeMapping)
         {
             JsonColumn = jsonColumn;
@@ -30,7 +30,7 @@ namespace Microsoft.EntityFrameworkCore.Query.SqlExpressions
         /// <summary>
         /// TODO
         /// </summary>
-        public virtual IReadOnlyList<string> JsonPath { get; }
+        public virtual IReadOnlyList<SqlExpression> JsonPath { get; }
 
         /// <inheritdoc />
         protected override Expression VisitChildren(ExpressionVisitor visitor)
