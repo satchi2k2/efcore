@@ -1,6 +1,10 @@
 ﻿// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.Storage;
+using System.Text.Json;
+
 namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 {
     /// <summary>
@@ -41,31 +45,75 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             IConventionAnnotation? oldAnnotation,
             IConventionContext<IConventionAnnotation> context)
         {
-            if (name != RelationalAnnotationNames.MapToJsonColumnName)
+            if (name == RelationalAnnotationNames.MapToJsonColumnName)
             {
-                return;
-            }
-
-            // TODO: if json type name was specified (via attribute) propagate it here and add it as annotation on the entity itself
-            // needed for postgres, since it has two json types
-            var jsonColumnName = annotation?.Value as string;
-            if (!string.IsNullOrEmpty(jsonColumnName))
-            {
-                foreach (var navigation in entityTypeBuilder.Metadata.GetDeclaredNavigations()
-                    .Where(n => n.ForeignKey.IsOwnership
-                        && n.DeclaringEntityType == entityTypeBuilder.Metadata
-                        && n.TargetEntityType.IsOwned()))
+                // TODO: if json type name was specified (via attribute) propagate it here and add it as annotation on the entity itself
+                // needed for postgres, since it has two json types
+                var jsonColumnName = annotation?.Value as string;
+                if (!string.IsNullOrEmpty(jsonColumnName))
                 {
-                    var currentJsonColumnName = navigation.TargetEntityType.MappedToJsonColumnName();
-                    if (currentJsonColumnName == null || currentJsonColumnName != jsonColumnName)
+                    var jsonColumnTypeName = entityTypeBuilder.Metadata.MappedToJsonColumnTypeName();
+                    var jsonColumnTypeMapping = RelationalDependencies.RelationalTypeMappingSource!.FindMapping(
+                        typeof(JsonElement),
+                        jsonColumnTypeName);
+
+                    // TODO: add api
+                    entityTypeBuilder.Metadata.SetOrRemoveAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, jsonColumnTypeMapping);
+
+                    foreach (var navigation in entityTypeBuilder.Metadata.GetDeclaredNavigations()
+                        .Where(n => n.ForeignKey.IsOwnership
+                            && n.DeclaringEntityType == entityTypeBuilder.Metadata
+                            && n.TargetEntityType.IsOwned()))
                     {
-                        navigation.TargetEntityType.SetMappedToJsonColumnName(jsonColumnName);
+                        var currentJsonColumnName = navigation.TargetEntityType.MappedToJsonColumnName();
+                        if (currentJsonColumnName == null || currentJsonColumnName != jsonColumnName)
+                        {
+                            navigation.TargetEntityType.SetMappedToJsonColumnName(jsonColumnName);
+                        }
+
+                        var currentJsonColumnTypeName = navigation.TargetEntityType.MappedToJsonColumnTypeName();
+                        if (jsonColumnTypeName != null && currentJsonColumnTypeName != jsonColumnTypeName)
+                        {
+                            navigation.TargetEntityType.SetMappedToJsonColumnTypeName(jsonColumnTypeName);
+                        }
+
+                        // TODO: add api
+                        navigation.TargetEntityType.SetOrRemoveAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, jsonColumnTypeMapping);
                     }
                 }
+                else
+                {
+                    // TODO: unwind everything
+                }
             }
-            else
+
+            if (name == RelationalAnnotationNames.MapToJsonColumnTypeName)
             {
-                // TODO: unwind everything
+                var jsonColumnTypeName = annotation?.Value as string;
+                if (!string.IsNullOrEmpty(jsonColumnTypeName))
+                {
+                    foreach (var navigation in entityTypeBuilder.Metadata.GetDeclaredNavigations()
+                        .Where(n => n.ForeignKey.IsOwnership
+                            && n.DeclaringEntityType == entityTypeBuilder.Metadata
+                            && n.TargetEntityType.IsOwned()))
+                    {
+                        var currentJsonColumnTypeName = navigation.TargetEntityType.MappedToJsonColumnTypeName();
+                        if (currentJsonColumnTypeName == null || currentJsonColumnTypeName != jsonColumnTypeName)
+                        {
+                            navigation.TargetEntityType.SetMappedToJsonColumnTypeName(jsonColumnTypeName);
+                            var jsonColumnTypeMapping = RelationalDependencies.RelationalTypeMappingSource!.FindMapping(
+                                typeof(JsonElement),
+                                jsonColumnTypeName);
+
+                            // TODO: add api
+                            navigation.TargetEntityType.SetOrRemoveAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, jsonColumnTypeMapping);
+                        }
+                    }
+                }
+                else
+                {
+                    // undo
+                }
             }
         }
 
@@ -76,10 +124,24 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             IConventionNavigationBuilder navigationBuilder,
             IConventionContext<IConventionNavigationBuilder> context)
         {
-            if (navigationBuilder.Metadata.DeclaringEntityType.MappedToJsonColumnName() is string jsonColumnName
-                && navigationBuilder.Metadata.ForeignKey.IsOwnership)
+            if (navigationBuilder.Metadata.ForeignKey.IsOwnership)
             {
-                navigationBuilder.Metadata.TargetEntityType.SetMappedToJsonColumnName(jsonColumnName);
+                if (navigationBuilder.Metadata.DeclaringEntityType.MappedToJsonColumnName() is string jsonColumnName)
+                {
+                    navigationBuilder.Metadata.TargetEntityType.SetMappedToJsonColumnName(jsonColumnName);
+                }
+
+                if (navigationBuilder.Metadata.DeclaringEntityType.MappedToJsonColumnTypeName() is string jsonColumnTypeName)
+                {
+                    navigationBuilder.Metadata.TargetEntityType.SetMappedToJsonColumnTypeName(jsonColumnTypeName);
+                }
+
+                if (navigationBuilder.Metadata.DeclaringEntityType.FindAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping) is RelationalTypeMapping jsonColumnTypeMapping)
+                {
+                    navigationBuilder.Metadata.TargetEntityType.SetOrRemoveAnnotation(
+                        RelationalAnnotationNames.MapToJsonTypeMapping,
+                        jsonColumnTypeMapping);
+                }
             }
         }
     }

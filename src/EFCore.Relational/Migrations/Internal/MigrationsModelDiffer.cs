@@ -701,12 +701,14 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
             }
         }
 
-        // TODO: incorporate into column ordering logic properly
-        Check.DebugAssert(columns.Count(x => x is not JsonColumn) == 0, "columns is not empty");
+        Check.DebugAssert(columns.Count == 0, "columns is not empty");
+
+        var jsonColumns = table.Columns.Where(x => x is JsonColumn).OrderBy(x => x.Name);
 
         return sortedColumns.Where(c => c.Order.HasValue).OrderBy(c => c.Order)
             .Concat(sortedColumns.Where(c => !c.Order.HasValue))
-            .Concat(columns);
+            .Concat(columns)
+            .Concat(jsonColumns);
     }
 
     private static IEnumerable<IProperty> GetSortedProperties(IEntityType entityType, ITable table)
@@ -1062,12 +1064,22 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
             Name = target.Name
         };
 
-        var targetMapping = target.PropertyMappings.First();
-        var targetTypeMapping = targetMapping.TypeMapping;
+        if (target is JsonColumn jsonColumn)
+        {
+            var targetTypeMapping = (RelationalTypeMapping)target[RelationalAnnotationNames.MapToJsonTypeMapping]!;
 
-        Initialize(
-            operation, target, targetTypeMapping, target.IsNullable,
-            target.GetAnnotations(), inline);
+            InitializeJsonColumn(
+                operation, jsonColumn, targetTypeMapping, jsonColumn.IsNullable, jsonColumn.GetAnnotations(), inline);
+        }
+        else
+        {
+            var targetMapping = target.PropertyMappings.First();
+            var targetTypeMapping = targetMapping.TypeMapping;
+
+            Initialize(
+                operation, target, targetTypeMapping, target.IsNullable,
+                target.GetAnnotations(), inline);
+        }
 
         if (!inline && target.Order.HasValue)
         {
@@ -1160,6 +1172,29 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
         columnOperation.IsStored = column.IsStored;
         columnOperation.Comment = column.Comment;
         columnOperation.Collation = column.Collation;
+        columnOperation.AddAnnotations(migrationsAnnotations);
+    }
+
+    private void InitializeJsonColumn(
+        ColumnOperation columnOperation,
+        JsonColumn column,
+        RelationalTypeMapping typeMapping,
+        bool isNullable,
+        IEnumerable<IAnnotation> migrationsAnnotations,
+        bool inline = false)
+    {
+        columnOperation.ColumnType = column.StoreType;
+        columnOperation.IsNullable = isNullable;
+
+        var valueConverter = typeMapping.Converter;
+        columnOperation.ClrType
+            = (valueConverter?.ProviderClrType
+                ?? typeMapping.ClrType).UnwrapNullableType();
+
+        columnOperation.DefaultValue = inline || isNullable
+            ? null
+            : GetDefaultValue(columnOperation.ClrType);
+
         columnOperation.AddAnnotations(migrationsAnnotations);
     }
 

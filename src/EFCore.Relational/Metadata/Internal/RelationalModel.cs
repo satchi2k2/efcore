@@ -435,35 +435,29 @@ public class RelationalModel : Annotatable, IRelationalModel
         var ownership = default(IForeignKey);
         if (!string.IsNullOrEmpty(mapToJsonColumnName))
         {
-            var jsonColumnTypeName = mappedType.MappedToJsonColumnTypeName();
-            var jsonColumnTypeMapping = (RelationalTypeMapping?)mappedType.FindRuntimeAnnotationValue(RelationalAnnotationNames.MapToJsonTypeMapping);
-            if (jsonColumnTypeMapping == null)
-            {
-                jsonColumnTypeMapping = relationalTypeMappingSource!.FindMapping(
-                    typeof(JsonElement),
-                    jsonColumnTypeName);
-
-                if (jsonColumnTypeMapping == null)
-                {
-                    throw new InvalidOperationException("Mapping for json column could not be found.");
-                }
-
-                mappedType.AddRuntimeAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, jsonColumnTypeMapping);
-            }
-
             jsonColumn = (JsonColumn?)table.FindColumn(mapToJsonColumnName);
             if (jsonColumn == null)
             {
+                var jsonColumnTypeMapping = (RelationalTypeMapping)mappedType.GetAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping).Value!;
                 jsonColumn = new JsonColumn(mapToJsonColumnName, jsonColumnTypeMapping.StoreType, table);
+
+                // test
+                jsonColumn[RelationalAnnotationNames.MapToJsonTypeMapping] = jsonColumnTypeMapping;
+
                 table.Columns.Add(mapToJsonColumnName, jsonColumn);
             }
 
             ownership = mappedType.GetForeignKeys().Where(fk => fk.IsOwnership).Single();
-
             if (!ownership.PrincipalEntityType.IsMappedToJson())
             {
                 // nullability of the json column depends on the nullability of the outer-most navigation
                 jsonColumn.IsNullable = !ownership.IsRequired || !ownership.IsUnique;
+            }
+
+            if (ownership.PrincipalEntityType.BaseType != null)
+            {
+                // if navigation is defined on a derived type, the column must be made nullable
+                jsonColumn.IsNullable = true;
             }
         }
 

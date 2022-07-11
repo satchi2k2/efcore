@@ -1,6 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+
 namespace Microsoft.EntityFrameworkCore.Metadata;
 
 /// <summary>
@@ -44,7 +46,14 @@ public class RelationalAnnotationProvider : IRelationalAnnotationProvider
 
     /// <inheritdoc />
     public virtual IEnumerable<IAnnotation> For(IColumn column, bool designTime)
-        => Enumerable.Empty<IAnnotation>();
+    {
+        if (designTime && column is JsonColumn jsonColumn)
+        {
+            var entityType = column.Table.EntityTypeMappings.First().EntityType;
+        }
+
+        return Enumerable.Empty<IAnnotation>();
+    }
 
     /// <inheritdoc />
     public virtual IEnumerable<IAnnotation> For(IView view, bool designTime)

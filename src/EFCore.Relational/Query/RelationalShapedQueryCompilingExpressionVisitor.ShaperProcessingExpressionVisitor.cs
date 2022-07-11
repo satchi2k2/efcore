@@ -1283,7 +1283,8 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
             _variables.Add(keyValuesParameter);
             _expressions.Add(keyValuesAssignment);
 
-            var jsonTypeMapping = (RelationalTypeMapping)entityType.FindRuntimeAnnotationValue(RelationalAnnotationNames.MapToJsonTypeMapping)!;
+            var jsonTypeMapping = (RelationalTypeMapping)entityType[RelationalAnnotationNames.MapToJsonTypeMapping]!;
+            //var jsonTypeMapping = (RelationalTypeMapping)entityType.FindRuntimeAnnotationValue(RelationalAnnotationNames.MapToJsonTypeMapping)!;
 
             if (_existingJsonElementMap.TryGetValue((jsonColumnProjectionIndex, additionalPath), out var exisitingJsonElementVariable))
             {

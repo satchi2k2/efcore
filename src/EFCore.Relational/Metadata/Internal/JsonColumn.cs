@@ -9,7 +9,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public class JsonColumn : Column
+    public class JsonColumn : Column//, IColumn
     {
         private readonly Dictionary<IForeignKey, Dictionary<string, Column>> _containedColumns = new();
 
@@ -60,5 +60,29 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 throw new InvalidOperationException("column already exists");
             }
         }
+
+        ///// <inheritdoc />
+        //string? IColumn.DefaultValueSql
+        //    => null;
+
+        ///// <inheritdoc />
+        //string? IColumn.ComputedColumnSql
+        //    => null;
+
+        ///// <inheritdoc />
+        //bool? IColumn.IsStored
+        //    => null;
+
+        ///// <inheritdoc />
+        //string? IColumn.Comment
+        //    => null;
+
+        ///// <inheritdoc />
+        //string? IColumn.Collation
+        //    => null;
+
+        ///// <inheritdoc />
+        //IColumnMapping? IColumn.FindColumnMapping(IReadOnlyEntityType entityType)
+        //    => null;
     }
 }

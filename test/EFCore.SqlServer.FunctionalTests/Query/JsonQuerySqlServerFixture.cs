@@ -15,19 +15,6 @@ public class JsonQuerySqlServerFixture : JsonQueryFixtureBase
     {
         base.Seed(context);
 
-        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonEntitiesBasic]");
-
-        context.Database.ExecuteSqlRaw(
-            @"CREATE TABLE [dbo].[JsonEntitiesBasic](
-	[Id] [int] IDENTITY(1,1) NOT NULL,
-	[Name] [nvarchar](max) NULL,
-	[json_collection_shared] [nvarchar](max) NULL,
-	[json_reference_shared] [nvarchar](max) NULL,
- CONSTRAINT [PK_JsonEntitiesBasic] PRIMARY KEY CLUSTERED 
-(
-	[Id] ASC
-))");
-
         var jsonEntitiesBasic = JsonQueryData.CreateJsonEntitiesBasic();
         foreach (var jsonEntityBasic in jsonEntitiesBasic)
         {
@@ -45,19 +32,6 @@ public class JsonQuerySqlServerFixture : JsonQueryFixtureBase
 
             context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
         }
-
-        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonEntitiesCustomNaming]");
-
-        context.Database.ExecuteSqlRaw(
-            @"CREATE TABLE [dbo].[JsonEntitiesCustomNaming](
-	[Id] [int] IDENTITY(1,1) NOT NULL,
-	[Title] [nvarchar](max) NULL,
-	[json_collection_custom_naming] [nvarchar](max) NULL,
-	[json_reference_custom_naming] [nvarchar](max) NULL,
- CONSTRAINT [PK_JsonEntitiesCustomNaming] PRIMARY KEY CLUSTERED 
-(
-	[Id] ASC
-))");
 
         var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
         foreach (var jsonEntityCustomNaming in jsonEntitiesCustomNaming)
@@ -77,18 +51,6 @@ public class JsonQuerySqlServerFixture : JsonQueryFixtureBase
             context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
         }
 
-        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonEntitiesSingleOwned]");
-
-        context.Database.ExecuteSqlRaw(
-            @"CREATE TABLE [dbo].[JsonEntitiesSingleOwned](
-	[Id] [int] IDENTITY(1,1) NOT NULL,
-	[Name] [nvarchar](max) NULL,
-	[json_collection] [nvarchar](max) NULL,
- CONSTRAINT [PK_JsonEntitiesSingleOwned] PRIMARY KEY CLUSTERED 
-(
-	[Id] ASC
-))");
-
         var jsonEntitiesSingleOwned = JsonQueryData.CreateJsonEntitiesSingleOwned();
         foreach (var jsonEntitySingleOwned in jsonEntitiesSingleOwned)
         {
@@ -103,23 +65,6 @@ public class JsonQuerySqlServerFixture : JsonQueryFixtureBase
 
             context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
         }
-
-        context.Database.ExecuteSqlRaw("DROP TABLE [dbo].[JsonEntityInheritanceBase]");
-
-        context.Database.ExecuteSqlRaw(
-            @"CREATE TABLE [dbo].[JsonEntityInheritanceBase](
-    [Id] [int] IDENTITY(1,1) NOT NULL,
-    [Name] [nvarchar](max) NULL,
-    [Discriminator] [nvarchar](max) NOT NULL,
-    [Fraction] [float] NULL,
-    [reference_on_base] [nvarchar](max) NULL,
-    [collection_on_base] [nvarchar](max) NULL,
-    [reference_on_derived] [nvarchar](max) NULL,
-    [collection_on_derived] [nvarchar](max) NULL,
- CONSTRAINT [PK_JsonEntityInheritanceBase] PRIMARY KEY CLUSTERED 
-(
-	[Id] ASC
-))");
 
         var jsonEntitiesInheritance = JsonQueryData.CreateJsonEntitiesInheritance();
         foreach (var jsonEntityInheritance in jsonEntitiesInheritance)

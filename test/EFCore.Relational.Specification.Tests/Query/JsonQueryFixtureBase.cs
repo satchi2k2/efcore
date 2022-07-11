@@ -303,7 +303,6 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
         modelBuilder.Entity<JsonEntityBasic>().OwnsMany(x => x.OwnedCollectionSharedRoot, b =>
         {
-            b.ToJson("json_collection_shared");
             b.OwnsOne(x => x.OwnedReferenceSharedBranch, bb =>
             {
                 bb.Property(x => x.Fraction).HasPrecision(18, 2);
@@ -317,6 +316,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
                 bb.OwnsOne(x => x.OwnedReferenceSharedLeaf);
                 bb.OwnsMany(x => x.OwnedCollectionSharedLeaf);
             });
+            b.ToJson("json_collection_shared");
         });
 
         modelBuilder.Entity<JsonEntityCustomNaming>().OwnsOne(x => x.OwnedReferenceRoot, b =>
