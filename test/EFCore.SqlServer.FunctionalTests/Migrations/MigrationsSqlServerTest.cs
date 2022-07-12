@@ -6949,6 +6949,211 @@ EXEC sp_addextendedproperty 'MS_Description', @description, 'SCHEMA', @defaultSc
 EXEC(N'ALTER TABLE [Customers] SET (SYSTEM_VERSIONING = ON (HISTORY_TABLE = [' + @historyTableSchema + '].[HistoryTable]))')");
     }
 
+    [ConditionalFact]
+    public virtual async Task Create_table_with_json_column()
+    {
+        await Test(
+            builder => { },
+            builder =>
+            {
+                builder.Entity("Entity", e =>
+                {
+                    e.Property<int>("Id").ValueGeneratedOnAdd();
+                    e.HasKey("Id");
+                    e.Property<string>("Name");
+                    e.OwnsOne("Owned", "OwnedReference", o =>
+                    {
+                        o.Property<DateTime>("Date");
+                        o.ToJson("json_reference");
+                    });
+                });
+            },
+            model =>
+            {
+                var table = Assert.Single(model.Tables);
+                Assert.Equal("Entity", table.Name);
+
+                Assert.Collection(
+                    table.Columns,
+                    c => Assert.Equal("Id", c.Name),
+                    c => Assert.Equal("Name", c.Name),
+                    c =>
+                    {
+                        Assert.Equal("json_reference", c.Name);
+                        Assert.Equal("nvarchar(max)", c.StoreType);
+                    });
+                Assert.Same(
+                    table.Columns.Single(c => c.Name == "Id"),
+                    Assert.Single(table.PrimaryKey!.Columns));
+            });
+
+        AssertSql(
+            @"CREATE TABLE [Entity] (
+    [Id] int NOT NULL IDENTITY,
+    [Name] nvarchar(max) NULL,
+    [json_reference] nvarchar(max) NOT NULL,
+    CONSTRAINT [PK_Entity] PRIMARY KEY ([Id])
+);");
+    }
+
+    [ConditionalFact]
+    public virtual async Task Add_json_column_to_existing_entity()
+    {
+        await Test(
+            builder => builder.Entity("Entity", e =>
+            {
+                e.Property<int>("Id").ValueGeneratedOnAdd();
+                e.HasKey("Id");
+                e.Property<string>("Name");
+            }),
+            builder =>
+            {
+                builder.Entity("Entity", e =>
+                {
+                    e.Property<int>("Id").ValueGeneratedOnAdd();
+                    e.HasKey("Id");
+                    e.Property<string>("Name");
+                    e.OwnsOne("Owned", "OwnedReference", o =>
+                    {
+                        o.Property<DateTime>("Date");
+                        o.ToJson("json_reference");
+                    });
+                });
+            },
+            model =>
+            {
+                var table = Assert.Single(model.Tables);
+                Assert.Equal("Entity", table.Name);
+
+                Assert.Collection(
+                    table.Columns,
+                    c => Assert.Equal("Id", c.Name),
+                    c => Assert.Equal("Name", c.Name),
+                    c =>
+                    {
+                        Assert.Equal("json_reference", c.Name);
+                        Assert.Equal("nvarchar(max)", c.StoreType);
+                    });
+                Assert.Same(
+                    table.Columns.Single(c => c.Name == "Id"),
+                    Assert.Single(table.PrimaryKey!.Columns));
+            });
+
+        AssertSql(
+            @"ALTER TABLE [Entity] ADD [json_reference] nvarchar(max) NOT NULL DEFAULT N'';");
+    }
+
+    [ConditionalFact]
+    public virtual async Task Remove_json_column_from_existing_entity()
+    {
+        await Test(
+            builder =>
+            {
+                builder.Entity("Entity", e =>
+                {
+                    e.Property<int>("Id").ValueGeneratedOnAdd();
+                    e.HasKey("Id");
+                    e.Property<string>("Name");
+                    e.OwnsOne("Owned", "OwnedReference", o =>
+                    {
+                        o.Property<DateTime>("Date");
+                        o.ToJson("json_reference");
+                    });
+                });
+            },
+            builder => builder.Entity("Entity", e =>
+            {
+                e.Property<int>("Id").ValueGeneratedOnAdd();
+                e.HasKey("Id");
+                e.Property<string>("Name");
+            }),
+            model =>
+            {
+                var table = Assert.Single(model.Tables);
+                Assert.Equal("Entity", table.Name);
+
+                Assert.Collection(
+                    table.Columns,
+                    c => Assert.Equal("Id", c.Name),
+                    c => Assert.Equal("Name", c.Name));
+                Assert.Same(
+                    table.Columns.Single(c => c.Name == "Id"),
+                    Assert.Single(table.PrimaryKey!.Columns));
+            });
+
+        AssertSql(
+            @"DECLARE @var0 sysname;
+SELECT @var0 = [d].[name]
+FROM [sys].[default_constraints] [d]
+INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Entity]') AND [c].[name] = N'json_reference');
+IF @var0 IS NOT NULL EXEC(N'ALTER TABLE [Entity] DROP CONSTRAINT [' + @var0 + '];');
+ALTER TABLE [Entity] DROP COLUMN [json_reference];");
+    }
+
+    [ConditionalFact]
+    public virtual async Task Rename_json_column()
+    {
+        await Test(
+            builder =>
+            {
+                builder.Entity("Entity", e =>
+                {
+                    e.Property<int>("Id").ValueGeneratedOnAdd();
+                    e.HasKey("Id");
+                    e.Property<string>("Name");
+                    e.OwnsOne("Owned", "OwnedReference", o =>
+                    {
+                        o.Property<DateTime>("Date");
+                        o.ToJson("json_reference");
+                    });
+                });
+            },
+            builder =>
+            {
+                builder.Entity("Entity", e =>
+                {
+                    e.Property<int>("Id").ValueGeneratedOnAdd();
+                    e.HasKey("Id");
+                    e.Property<string>("Name");
+                    e.OwnsOne("Owned", "OwnedReference", o =>
+                    {
+                        o.Property<DateTime>("Date");
+                        o.ToJson("new_json_reference");
+                    });
+                });
+            },
+            model =>
+            {
+                var table = Assert.Single(model.Tables);
+                Assert.Equal("Entity", table.Name);
+
+                Assert.Collection(
+                    table.Columns,
+                    c => Assert.Equal("Id", c.Name),
+                    c => Assert.Equal("Name", c.Name),
+                    c =>
+                    {
+                        Assert.Equal("new_json_reference", c.Name);
+                        Assert.Equal("nvarchar(max)", c.StoreType);
+                    });
+                Assert.Same(
+                    table.Columns.Single(c => c.Name == "Id"),
+                    Assert.Single(table.PrimaryKey!.Columns));
+            });
+
+        AssertSql(
+            @"EXEC sp_rename N'[Entity].[json_reference]', N'new_json_reference', N'COLUMN';",
+                //
+                @"DECLARE @var0 sysname;
+SELECT @var0 = [d].[name]
+FROM [sys].[default_constraints] [d]
+INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Entity]') AND [c].[name] = N'new_json_reference');
+IF @var0 IS NOT NULL EXEC(N'ALTER TABLE [Entity] DROP CONSTRAINT [' + @var0 + '];');
+ALTER TABLE [Entity] ALTER COLUMN [new_json_reference] nvarchar(max) NOT NULL;");
+    }
+
     protected override string NonDefaultCollation
         => _nonDefaultCollation ??= GetDatabaseCollation() == "German_PhoneBook_CI_AS"
             ? "French_CI_AS"

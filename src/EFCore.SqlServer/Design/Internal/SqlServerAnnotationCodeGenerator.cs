@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Text;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
 
 namespace Microsoft.EntityFrameworkCore.SqlServer.Design.Internal;
@@ -98,6 +99,10 @@ public class SqlServerAnnotationCodeGenerator : AnnotationCodeGenerator
     private static readonly MethodInfo TemporalPropertyHasColumnNameMethodInfo
         = typeof(TemporalPeriodPropertyBuilder).GetRuntimeMethod(
             nameof(TemporalPeriodPropertyBuilder.HasColumnName), new[] { typeof(string) })!;
+
+    private static readonly MethodInfo ToJsonMethodInfo
+        = typeof(RelationalOwnedNavigationBuilderExtensions).GetRuntimeMethod(
+            nameof(RelationalOwnedNavigationBuilderExtensions.ToJson), new[] { typeof(OwnedNavigationBuilder), typeof(string) })!;
 
     #endregion MethodInfos
 
@@ -274,6 +279,25 @@ public class SqlServerAnnotationCodeGenerator : AnnotationCodeGenerator
             annotations.Remove(SqlServerAnnotationNames.TemporalHistoryTableSchema);
             annotations.Remove(SqlServerAnnotationNames.TemporalPeriodStartPropertyName);
             annotations.Remove(SqlServerAnnotationNames.TemporalPeriodEndPropertyName);
+        }
+
+        if (annotations.TryGetValue(RelationalAnnotationNames.MapToJsonColumnName, out var jsonColumnNameAnnotation)
+            && jsonColumnNameAnnotation != null && jsonColumnNameAnnotation.Value is string jsonColumnName)
+        {
+            // only add the fluent api on top level entity
+            if (!entityType.FindOwnership()!.PrincipalEntityType.IsMappedToJson())
+            {
+                // TODO: also look for JsonColumnType
+                var toJsonCall = new MethodCallCodeFragment(
+                    ToJsonMethodInfo,
+                    jsonColumnName);
+
+                fragments.Add(toJsonCall);
+            }
+
+            annotations.Remove(RelationalAnnotationNames.MapToJsonColumnName);
+            annotations.Remove(RelationalAnnotationNames.MapToJsonTypeMapping);
+            annotations.Remove(RelationalAnnotationNames.MapToJsonColumnTypeName);
         }
 
         return fragments;

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 
@@ -438,12 +439,15 @@ public class RelationalModel : Annotatable, IRelationalModel
             jsonColumn = (JsonColumn?)table.FindColumn(mapToJsonColumnName);
             if (jsonColumn == null)
             {
-                var jsonColumnTypeMapping = (RelationalTypeMapping)mappedType.GetAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping).Value!;
+                var jsonColumnTypeName = mappedType.MappedToJsonColumnTypeName();
+
+                // TODO: bang?
+                Debug.Assert(relationalTypeMappingSource != null, "Type mapping source not found");
+
+                var jsonColumnTypeMapping = relationalTypeMappingSource.FindMapping(typeof(JsonElement), jsonColumnTypeName)!;
+                //var jsonColumnTypeMapping = mappedType.MapToJsonTypeMapping()!;
                 jsonColumn = new JsonColumn(mapToJsonColumnName, jsonColumnTypeMapping.StoreType, table);
-
-                // test
                 jsonColumn[RelationalAnnotationNames.MapToJsonTypeMapping] = jsonColumnTypeMapping;
-
                 table.Columns.Add(mapToJsonColumnName, jsonColumn);
             }
 

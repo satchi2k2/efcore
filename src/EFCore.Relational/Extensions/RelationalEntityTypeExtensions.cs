@@ -1696,60 +1696,105 @@ public static class RelationalEntityTypeExtensions
         => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonColumnTypeName)?.Value as string;
 
     /// <summary>
-    ///     TODO
+    /// TODO
     /// </summary>
-    public static IMutableEntityType FindJsonAggregateRoot(this IMutableEntityType entityType)
-    {
-        if (entityType.IsMappedToJson())
-        {
-            var currentEntity = entityType;
-            while (currentEntity.IsMappedToJson())
-            {
-                currentEntity = currentEntity.FindOwnership()!.PrincipalEntityType;
-            }
+    public static void SetMapToJsonTypeMapping(this IMutableEntityType entityType, RelationalTypeMapping typeMapping)
+        => entityType.SetOrRemoveAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, typeMapping);
 
-            return currentEntity;
-        }
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static void SetMapToJsonTypeMapping(
+        this IConventionEntityType entityType,
+        RelationalTypeMapping typeMapping,
+        bool fromDataAnnotation = false)
+        => entityType.SetOrRemoveAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, typeMapping, fromDataAnnotation);
 
-        return entityType;
-    }
-
+    /// <summary>
+    /// TODO
+    /// </summary>
+    public static ConfigurationSource? GetMapToJsonTypeMappingConfigurationSource(this IConventionEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping)
+            ?.GetConfigurationSource();
 
     /// <summary>
     ///     TODO
     /// </summary>
-    public static IConventionEntityType FindJsonAggregateRoot(this IConventionEntityType entityType)
-    {
-        if (entityType.IsMappedToJson())
-        {
-            var currentEntity = entityType;
-            while (currentEntity.IsMappedToJson())
-            {
-                currentEntity = currentEntity.FindOwnership()!.PrincipalEntityType;
-            }
-
-            return currentEntity;
-        }
-
-        return entityType;
-    }
+    public static RelationalTypeMapping? MapToJsonTypeMapping(this IEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping)?.Value as RelationalTypeMapping;
 
     /// <summary>
     ///     TODO
     /// </summary>
-    public static IReadOnlyEntityType FindJsonAggregateRoot(this IReadOnlyEntityType entityType)
-    {
-        if (entityType.IsMappedToJson())
-        {
-            var currentEntity = entityType;
-            while (currentEntity.IsMappedToJson())
-            {
-                currentEntity = currentEntity.FindOwnership()!.PrincipalEntityType;
-            }
+    public static RelationalTypeMapping? MapToJsonTypeMapping(this IMutableEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping)?.Value as RelationalTypeMapping;
 
-            return currentEntity;
-        }
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static RelationalTypeMapping? MapToJsonTypeMapping(this IConventionEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping)?.Value as RelationalTypeMapping;
 
-        return entityType;
-    }
+    /// <summary>
+    ///     TODO
+    /// </summary>
+    public static RelationalTypeMapping? MapToJsonTypeMapping(this IReadOnlyEntityType entityType)
+        => entityType.FindAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping)?.Value as RelationalTypeMapping;
+
+    ///// <summary>
+    /////     TODO
+    ///// </summary>
+    //public static IMutableEntityType FindJsonAggregateRoot(this IMutableEntityType entityType)
+    //{
+    //    if (entityType.IsMappedToJson())
+    //    {
+    //        var currentEntity = entityType;
+    //        while (currentEntity.IsMappedToJson())
+    //        {
+    //            currentEntity = currentEntity.FindOwnership()!.PrincipalEntityType;
+    //        }
+
+    //        return currentEntity;
+    //    }
+
+    //    return entityType;
+    //}
+
+    ///// <summary>
+    /////     TODO
+    ///// </summary>
+    //public static IConventionEntityType FindJsonAggregateRoot(this IConventionEntityType entityType)
+    //{
+    //    if (entityType.IsMappedToJson())
+    //    {
+    //        var currentEntity = entityType;
+    //        while (currentEntity.IsMappedToJson())
+    //        {
+    //            currentEntity = currentEntity.FindOwnership()!.PrincipalEntityType;
+    //        }
+
+    //        return currentEntity;
+    //    }
+
+    //    return entityType;
+    //}
+
+    ///// <summary>
+    /////     TODO
+    ///// </summary>
+    //public static IReadOnlyEntityType FindJsonAggregateRoot(this IReadOnlyEntityType entityType)
+    //{
+    //    if (entityType.IsMappedToJson())
+    //    {
+    //        var currentEntity = entityType;
+    //        while (currentEntity.IsMappedToJson())
+    //        {
+    //            currentEntity = currentEntity.FindOwnership()!.PrincipalEntityType;
+    //        }
+
+    //        return currentEntity;
+    //    }
+
+    //    return entityType;
+    //}
 }

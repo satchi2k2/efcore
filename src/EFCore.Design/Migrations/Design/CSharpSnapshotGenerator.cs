@@ -831,6 +831,18 @@ public class CSharpSnapshotGenerator : ICSharpSnapshotGenerator
             stringBuilder.AppendLine(";");
         }
 
+        //// TODO: also look for JsonColumnType
+        //var jsonColumnNameAnnotation = annotations.Find(RelationalAnnotationNames.MapToJsonColumnName);
+        //if (jsonColumnNameAnnotation != null && jsonColumnNameAnnotation.Value is string jsonColumnName)
+        //{
+        //    stringBuilder
+        //        .Append(".")
+        //        .Append("ToJson")
+        //        .Append("(")
+        //        .Append(Code.Literal(jsonColumnName))
+        //        .Append(");");
+        //}
+
         GenerateAnnotations(entityTypeBuilderName, entityType, stringBuilder, annotations, inChainedCall: false);
     }
 

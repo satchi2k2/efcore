@@ -57,8 +57,13 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                         typeof(JsonElement),
                         jsonColumnTypeName);
 
-                    // TODO: add api
-                    entityTypeBuilder.Metadata.SetOrRemoveAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, jsonColumnTypeMapping);
+                    if (jsonColumnTypeMapping == null)
+                    {
+                        // TODO: debug.assert or bang?
+                        throw new InvalidOperationException($"Couldn't find mapping for json column.");
+                    }
+
+                    entityTypeBuilder.Metadata.SetMapToJsonTypeMapping(jsonColumnTypeMapping);
 
                     foreach (var navigation in entityTypeBuilder.Metadata.GetDeclaredNavigations()
                         .Where(n => n.ForeignKey.IsOwnership
@@ -77,8 +82,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                             navigation.TargetEntityType.SetMappedToJsonColumnTypeName(jsonColumnTypeName);
                         }
 
-                        // TODO: add api
-                        navigation.TargetEntityType.SetOrRemoveAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, jsonColumnTypeMapping);
+                        navigation.TargetEntityType.SetMapToJsonTypeMapping(jsonColumnTypeMapping);
                     }
                 }
                 else
@@ -105,8 +109,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                                 typeof(JsonElement),
                                 jsonColumnTypeName);
 
-                            // TODO: add api
-                            navigation.TargetEntityType.SetOrRemoveAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping, jsonColumnTypeMapping);
+                            if (jsonColumnTypeMapping == null)
+                            {
+                                throw new InvalidOperationException("Couldn't find mapping for json column.");
+                            }
+
+                            navigation.TargetEntityType.SetMapToJsonTypeMapping(jsonColumnTypeMapping);
                         }
                     }
                 }
@@ -136,11 +144,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                     navigationBuilder.Metadata.TargetEntityType.SetMappedToJsonColumnTypeName(jsonColumnTypeName);
                 }
 
-                if (navigationBuilder.Metadata.DeclaringEntityType.FindAnnotation(RelationalAnnotationNames.MapToJsonTypeMapping) is RelationalTypeMapping jsonColumnTypeMapping)
+                if (navigationBuilder.Metadata.DeclaringEntityType.MapToJsonTypeMapping() is RelationalTypeMapping jsonColumnTypeMapping)
                 {
-                    navigationBuilder.Metadata.TargetEntityType.SetOrRemoveAnnotation(
-                        RelationalAnnotationNames.MapToJsonTypeMapping,
-                        jsonColumnTypeMapping);
+                    navigationBuilder.Metadata.TargetEntityType.SetMapToJsonTypeMapping(jsonColumnTypeMapping);
                 }
             }
         }

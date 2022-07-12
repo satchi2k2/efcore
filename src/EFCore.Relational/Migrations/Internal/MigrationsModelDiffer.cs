@@ -161,10 +161,15 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
             }
             else if (type == typeof(DropColumnOperation))
             {
-                if (string.IsNullOrWhiteSpace(diffContext.FindColumn((DropColumnOperation)operation)!.ComputedColumnSql))
+                var column = diffContext.FindColumn((DropColumnOperation)operation)!;
+                if (column is JsonColumn || string.IsNullOrWhiteSpace(column.ComputedColumnSql))
                 {
                     dropColumnOperations.Add(operation);
                 }
+                //if (string.IsNullOrWhiteSpace(diffContext.FindColumn((DropColumnOperation)operation)!.ComputedColumnSql))
+                //{
+                //    dropColumnOperations.Add(operation);
+                //}
                 else
                 {
                     dropComputedColumnOperations.Add(operation);
@@ -562,7 +567,17 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
             && target.IsExcludedFromMigrations)
         {
             // Populate column mapping
-            foreach (var _ in Diff(source.Columns, target.Columns, diffContext))
+            foreach (var _ in Diff(
+                source.Columns.Where(c => c is not JsonColumn),
+                target.Columns.Where(c => c is not JsonColumn),
+                diffContext))
+            {
+            }
+
+            foreach (var _ in Diff(
+                source.Columns.OfType<JsonColumn>(),
+                target.Columns.OfType<JsonColumn>(),
+                diffContext))
             {
             }
 
@@ -605,7 +620,8 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
             yield return alterTableOperation;
         }
 
-        var operations = Diff(source.Columns, target.Columns, diffContext)
+        var operations = Diff(source.Columns.Where(c => c is not JsonColumn), target.Columns.Where(c => c is not JsonColumn), diffContext)
+            .Concat(Diff(source.Columns.OfType<JsonColumn>(), target.Columns.OfType<JsonColumn>(), diffContext))
             .Concat(Diff(source.UniqueConstraints, target.UniqueConstraints, diffContext))
             .Concat(Diff(source.Indexes, target.Indexes, diffContext))
             .Concat(Diff(source.CheckConstraints, target.CheckConstraints, diffContext));
@@ -640,7 +656,11 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
         createTableOperation.AddAnnotations(target.GetAnnotations());
 
         createTableOperation.Columns.AddRange(
-            GetSortedColumns(target).SelectMany(p => Add(p, diffContext, inline: true)).Cast<AddColumnOperation>());
+            GetSortedColumns(target).Where(c => c is not JsonColumn).SelectMany(p => Add(p, diffContext, inline: true)).Cast<AddColumnOperation>());
+
+        createTableOperation.Columns.AddRange(
+            GetSortedColumns(target).OfType<JsonColumn>().SelectMany(p => Add(p, diffContext, inline: true)).Cast<AddColumnOperation>());
+
         var primaryKey = target.PrimaryKey;
         if (primaryKey != null)
         {
@@ -703,6 +723,7 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
 
         Check.DebugAssert(columns.Count == 0, "columns is not empty");
 
+        // TODO: improve the sorting logic - ideally we should inject json column in the place corresponding to the navigation that maps to it in the clr type
         var jsonColumns = table.Columns.Where(x => x is JsonColumn).OrderBy(x => x.Name);
 
         return sortedColumns.Where(c => c.Order.HasValue).OrderBy(c => c.Order)
@@ -897,6 +918,44 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
                                 && EntityTypePathEquals(sm.Property.DeclaringEntityType, tm.Property.DeclaringEntityType, c))),
             (s, t, _) => ColumnStructureEquals(s, t));
 
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected virtual IEnumerable<MigrationOperation> Diff(
+        IEnumerable<JsonColumn> source,
+        IEnumerable<JsonColumn> target,
+        DiffContext diffContext)
+        => DiffCollection(
+            source,
+            target,
+            diffContext,
+            Diff,
+            (t, c) => Add(t, c),
+            Remove,
+            (s, t, _) => string.Equals(s.Name, t.Name, StringComparison.OrdinalIgnoreCase),
+            //(s, t, c) => s.PropertyMappings.Any(
+            //    sm =>
+            //        t.PropertyMappings.Any(
+            //            tm =>
+            //                string.Equals(sm.Property.Name, tm.Property.Name, StringComparison.OrdinalIgnoreCase)
+            //                && EntityTypePathEquals(sm.Property.DeclaringEntityType, tm.Property.DeclaringEntityType, c))),
+            //(s, t, _) => s.PropertyMappings.Any(
+            //    sm =>
+            //        t.PropertyMappings.Any(
+            //            tm =>
+            //                string.Equals(sm.Property.Name, tm.Property.Name, StringComparison.OrdinalIgnoreCase))),
+            //(s, t, c) => ColumnStructureEquals(s, t)
+            //    && s.PropertyMappings.Any(
+            //        sm =>
+            //            t.PropertyMappings.Any(
+            //                tm =>
+            //                    string.Equals(sm.Property.Name, tm.Property.Name, StringComparison.OrdinalIgnoreCase)
+            //                    && EntityTypePathEquals(sm.Property.DeclaringEntityType, tm.Property.DeclaringEntityType, c))),
+            (s, t, _) => JsonColumnStructureEquals(s, t));
+
     private static bool ColumnStructureEquals(IColumn source, IColumn target)
     {
         if (!source.TryGetDefaultValue(out var sourceDefault))
@@ -924,6 +983,11 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
             && Equals(sourceDefault, targetDefault)
             && source.DefaultValueSql == target.DefaultValueSql;
     }
+
+
+    private static bool JsonColumnStructureEquals(JsonColumn source, JsonColumn target)
+        => source.StoreType == target.StoreType
+            && source.IsNullable == target.IsNullable;
 
     private static bool EntityTypePathEquals(IEntityType source, IEntityType target, DiffContext diffContext)
     {
@@ -1050,6 +1114,68 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    protected virtual IEnumerable<MigrationOperation> Diff(
+        JsonColumn source,
+        JsonColumn target,
+        DiffContext diffContext)
+    {
+        var table = target.Table;
+
+        if (source.Name != target.Name)
+        {
+            var renameColumnOperation = new RenameColumnOperation
+            {
+                Schema = table.Schema,
+                Table = table.Name,
+                Name = source.Name,
+                NewName = target.Name
+            };
+
+            renameColumnOperation.AddAnnotations(MigrationsAnnotationProvider.ForRename(source));
+
+            yield return renameColumnOperation;
+        }
+
+        var sourceMigrationsAnnotations = source.GetAnnotations();
+        var targetMigrationsAnnotations = target.GetAnnotations();
+
+        var isNullableChanged = source.IsNullable != target.IsNullable;
+        var columnTypeChanged = source.StoreType != target.StoreType;
+
+        if (isNullableChanged
+            || columnTypeChanged
+            || HasDifferences(sourceMigrationsAnnotations, targetMigrationsAnnotations))
+        {
+            var isDestructiveChange = isNullableChanged && source.IsNullable
+                // TODO: Detect type narrowing
+                || columnTypeChanged;
+
+            var alterColumnOperation = new AlterColumnOperation
+            {
+                Schema = table.Schema,
+                Table = table.Name,
+                Name = target.Name,
+                IsDestructiveChange = isDestructiveChange
+            };
+
+            InitializeJsonColumn(
+                alterColumnOperation, target,
+                target.IsNullable, targetMigrationsAnnotations, inline: !source.IsNullable);
+
+            InitializeJsonColumn(
+                alterColumnOperation.OldColumn, source,
+                source.IsNullable, sourceMigrationsAnnotations, inline: true);
+
+            yield return alterColumnOperation;
+        }
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     protected virtual IEnumerable<MigrationOperation> Add(
         IColumn target,
         DiffContext diffContext,
@@ -1064,27 +1190,42 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
             Name = target.Name
         };
 
-        if (target is JsonColumn jsonColumn)
-        {
-            var targetTypeMapping = (RelationalTypeMapping)target[RelationalAnnotationNames.MapToJsonTypeMapping]!;
+        var targetMapping = target.PropertyMappings.First();
+        var targetTypeMapping = targetMapping.TypeMapping;
 
-            InitializeJsonColumn(
-                operation, jsonColumn, targetTypeMapping, jsonColumn.IsNullable, jsonColumn.GetAnnotations(), inline);
-        }
-        else
-        {
-            var targetMapping = target.PropertyMappings.First();
-            var targetTypeMapping = targetMapping.TypeMapping;
-
-            Initialize(
-                operation, target, targetTypeMapping, target.IsNullable,
-                target.GetAnnotations(), inline);
-        }
+        Initialize(
+            operation, target, targetTypeMapping, target.IsNullable,
+            target.GetAnnotations(), inline);
 
         if (!inline && target.Order.HasValue)
         {
             operation.AddAnnotation(RelationalAnnotationNames.ColumnOrder, target.Order.Value);
         }
+
+        yield return operation;
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected virtual IEnumerable<MigrationOperation> Add(
+        JsonColumn target,
+        DiffContext diffContext,
+        bool inline = false)
+    {
+        var table = target.Table;
+
+        var operation = new AddColumnOperation
+        {
+            Schema = table.Schema,
+            Table = table.Name,
+            Name = target.Name
+        };
+
+        InitializeJsonColumn(operation, target, target.IsNullable, target.GetAnnotations(), inline);
 
         yield return operation;
     }
@@ -1178,7 +1319,7 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
     private void InitializeJsonColumn(
         ColumnOperation columnOperation,
         JsonColumn column,
-        RelationalTypeMapping typeMapping,
+        //RelationalTypeMapping typeMapping,
         bool isNullable,
         IEnumerable<IAnnotation> migrationsAnnotations,
         bool inline = false)
@@ -1186,14 +1327,20 @@ public class MigrationsModelDiffer : IMigrationsModelDiffer
         columnOperation.ColumnType = column.StoreType;
         columnOperation.IsNullable = isNullable;
 
-        var valueConverter = typeMapping.Converter;
-        columnOperation.ClrType
-            = (valueConverter?.ProviderClrType
-                ?? typeMapping.ClrType).UnwrapNullableType();
-
+        // TODO: clr type on type mapping is JsonElement
+        columnOperation.ClrType = typeof(string);
         columnOperation.DefaultValue = inline || isNullable
             ? null
             : GetDefaultValue(columnOperation.ClrType);
+
+        //var valueConverter = typeMapping.Converter;
+        //columnOperation.ClrType
+        //    = (valueConverter?.ProviderClrType
+        //        ?? typeMapping.ClrType).UnwrapNullableType();
+
+        //columnOperation.DefaultValue = inline || isNullable
+        //    ? null
+        //    : GetDefaultValue(columnOperation.ClrType);
 
         columnOperation.AddAnnotations(migrationsAnnotations);
     }
