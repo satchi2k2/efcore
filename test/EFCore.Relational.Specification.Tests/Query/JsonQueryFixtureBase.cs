@@ -299,6 +299,9 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
             });
         });
 
+        //modelBuilder.Entity<JsonEntityBasic>().Property(x => x.OwnedReferenceSharedRoot).HasColumnType("custom_json");
+        //modelBuilder.Entity<JsonEntityBasic>().Property(x => x.OwnedCollectionSharedRoot).HasColumnType("custom_json");
+
         //modelBuilder.Entity<MyEntity>().Navigation(x => x.OwnedReferenceSharedRoot).IsRequired();
 
         modelBuilder.Entity<JsonEntityBasic>().OwnsMany(x => x.OwnedCollectionSharedRoot, b =>

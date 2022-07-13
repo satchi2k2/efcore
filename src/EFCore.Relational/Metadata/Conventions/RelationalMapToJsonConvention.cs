@@ -117,7 +117,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
         /// <summary>
         /// TODO
         /// </summary>
-        public void ProcessNavigationAdded(
+        public virtual void ProcessNavigationAdded(
             IConventionNavigationBuilder navigationBuilder,
             IConventionContext<IConventionNavigationBuilder> context)
         {

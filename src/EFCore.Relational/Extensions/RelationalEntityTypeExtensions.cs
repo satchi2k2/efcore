@@ -1612,11 +1612,11 @@ public static class RelationalEntityTypeExtensions
     /// <summary>
     /// TODO
     /// </summary>
-    public static void SetJsonColumnName(
+    public static string? SetJsonColumnName(
         this IConventionEntityType entityType,
         string columnName,
         bool fromDataAnnotation = false)
-        => entityType.SetOrRemoveAnnotation(RelationalAnnotationNames.JsonColumnName, columnName, fromDataAnnotation);
+        => (string?)entityType.SetAnnotation(RelationalAnnotationNames.JsonColumnName, columnName, fromDataAnnotation)?.Value;
 
     /// <summary>
     /// TODO
@@ -1658,11 +1658,11 @@ public static class RelationalEntityTypeExtensions
     /// <summary>
     /// TODO
     /// </summary>
-    public static void SetJsonColumnTypeName(
+    public static string? SetJsonColumnTypeName(
         this IConventionEntityType entityType,
         string typeName,
         bool fromDataAnnotation = false)
-        => entityType.SetOrRemoveAnnotation(RelationalAnnotationNames.JsonColumnTypeName, typeName, fromDataAnnotation);
+        => (string?)entityType.SetAnnotation(RelationalAnnotationNames.JsonColumnTypeName, typeName, fromDataAnnotation)?.Value;
 
     /// <summary>
     /// TODO
@@ -1704,11 +1704,11 @@ public static class RelationalEntityTypeExtensions
     /// <summary>
     /// TODO
     /// </summary>
-    public static void SetJsonColumnTypeMapping(
+    public static RelationalTypeMapping? SetJsonColumnTypeMapping(
         this IConventionEntityType entityType,
         RelationalTypeMapping typeMapping,
         bool fromDataAnnotation = false)
-        => entityType.SetOrRemoveAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping, typeMapping, fromDataAnnotation);
+        => (RelationalTypeMapping?)entityType.SetAnnotation(RelationalAnnotationNames.JsonColumnTypeMapping, typeMapping, fromDataAnnotation)?.Value;
 
     /// <summary>
     /// TODO
