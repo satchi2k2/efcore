@@ -36,7 +36,7 @@ public class JsonQueryData : ISetSource
             Fraction = 10.0M,
             Enum = JsonEnum.One,
             OwnedReferenceLeaf = e1_r_r_r,
-            OwnedCollectionLeaf = new List<JsonOwnedLeaf> { e1_r_r_c1, e1_r_r_c2 }
+            //OwnedCollectionLeaf = new List<JsonOwnedLeaf> { e1_r_r_c1, e1_r_r_c2 }
         };
 
         //-------------------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ public class JsonQueryData : ISetSource
             Name = "e1_r",
             Number = 10,
             OwnedReferenceBranch = e1_r_r,
-            OwnedCollectionBranch = new List<JsonOwnedBranch> { e1_r_c1, e1_r_c2 }
+            //OwnedCollectionBranch = new List<JsonOwnedBranch> { e1_r_c1, e1_r_c2 }
         };
 
         //-------------------------------------------------------------------------------------------
@@ -231,7 +231,7 @@ public class JsonQueryData : ISetSource
             Id = 1,
             Name = "JsonEntityBasic1",
             OwnedReferenceRoot = e1_r,
-            OwnedCollectionRoot = new List<JsonOwnedRoot> { e1_c1, e1_c2 }
+            //OwnedCollectionRoot = new List<JsonOwnedRoot> { e1_c1, e1_c2 }
         };
 
         return new List<JsonEntityBasic> { entity1 };

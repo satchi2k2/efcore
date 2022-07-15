@@ -17,10 +17,10 @@ namespace Microsoft.EntityFrameworkCore.TestModels.JsonQuery
         public static void Seed(JsonQueryContext context)
         {
             // TODO: implement update
-            //var jsonBasicEntities = JsonQueryData.CreateJsonBasicEntities();
+            var jsonEntitiesBasic = JsonQueryData.CreateJsonEntitiesBasic();
 
-            //context.JsonBasicEntities.AddRange(jsonBasicEntities);
-            //context.SaveChanges();
+            context.JsonEntitiesBasic.AddRange(jsonEntitiesBasic);
+            context.SaveChanges();
         }
     }
 }
