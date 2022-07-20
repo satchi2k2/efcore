@@ -89,7 +89,7 @@ namespace Microsoft.EntityFrameworkCore.Query
 
             var typeMapping = property.FindRelationalTypeMapping()!;
             var pathSegment = new SqlConstantExpression(
-                Constant(property.GetJsonElementName()),
+                Constant(property.JsonElementName()),
                 typeMapping);
 
 //            var pathSegment = property.GetJsonElementName();

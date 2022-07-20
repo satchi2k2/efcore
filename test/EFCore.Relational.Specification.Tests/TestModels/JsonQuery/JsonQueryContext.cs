@@ -13,13 +13,19 @@ namespace Microsoft.EntityFrameworkCore.TestModels.JsonQuery
         public DbSet<JsonEntityBasic> JsonEntitiesBasic { get; set; }
         public DbSet<JsonEntityCustomNaming> JsonEntitiesCustomNaming { get; set; }
         public DbSet<JsonEntitySingleOwned> JsonEntitiesSingleOwned { get; set; }
+        public DbSet<JsonEntityInheritanceBase> JsonEntitiesInheritance { get; set; }
 
         public static void Seed(JsonQueryContext context)
         {
-            // TODO: implement update
             var jsonEntitiesBasic = JsonQueryData.CreateJsonEntitiesBasic();
+            //var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
+            //var jsonEntitiesSingleOwned = JsonQueryData.CreateJsonEntitiesSingleOwned();
+            //var jsonEntitiesInheritance = JsonQueryData.CreateJsonEntitiesInheritance();
 
             context.JsonEntitiesBasic.AddRange(jsonEntitiesBasic);
+            //context.JsonEntitiesCustomNaming.AddRange(jsonEntitiesCustomNaming);
+            //context.JsonEntitiesSingleOwned.AddRange(jsonEntitiesSingleOwned);
+            //context.JsonEntitiesInheritance.AddRange(jsonEntitiesInheritance);
             context.SaveChanges();
         }
     }

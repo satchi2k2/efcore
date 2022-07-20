@@ -283,6 +283,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder, DbContext context)
     {
+        modelBuilder.Entity<JsonEntityBasic>().Property(x => x.Id).ValueGeneratedNever();
         modelBuilder.Entity<JsonEntityBasic>().OwnsOne(x => x.OwnedReferenceRoot, b =>
         {
             b.ToJson();
@@ -323,7 +324,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
 
         modelBuilder.Entity<JsonEntityCustomNaming>().OwnsOne(x => x.OwnedReferenceRoot, b =>
         {
-            b.Property(x => x.Enum).HasConversion<string>();
+            b.Property(x => x.Enum).HasConversion<int>();
             b.OwnsOne(x => x.OwnedReferenceBranch);
             b.OwnsMany(x => x.OwnedCollectionBranch);
             b.ToJson("json_reference_custom_naming");
@@ -332,7 +333,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
         modelBuilder.Entity<JsonEntityCustomNaming>().OwnsMany(x => x.OwnedCollectionRoot, b =>
         {
             b.ToJson("json_collection_custom_naming");
-            b.Property(x => x.Enum).HasConversion<string>();
+            b.Property(x => x.Enum).HasConversion<int>();
             b.OwnsOne(x => x.OwnedReferenceBranch);
             b.OwnsMany(x => x.OwnedCollectionBranch);
         });

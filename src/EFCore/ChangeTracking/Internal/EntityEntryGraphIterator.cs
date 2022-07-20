@@ -43,6 +43,16 @@ public class EntityEntryGraphIterator : IEntityEntryGraphIterator
                 var targetEntityType = navigation.TargetEntityType;
                 if (navigation.IsCollection)
                 {
+                    if (navigation.ToString() == @"Navigation: JsonEntityBasic.OwnedReferenceRoot#JsonOwnedRoot.OwnedCollectionBranch#JsonOwnedBranch.OwnedCollectionLeaf (List<JsonOwnedLeaf>) Collection ToDependent JsonEntityBasic.OwnedReferenceRoot#JsonOwnedRoot.OwnedCollectionBranch#JsonOwnedBranch.OwnedCollectionLeaf#JsonOwnedLeaf")
+                    {
+                        Console.WriteLine("gfg");
+                    }
+
+                    if (navigation.ToString() == @"{Navigation: JsonEntityBasic.OwnedReferenceRoot#JsonOwnedRoot.OwnedCollectionBranch (List<JsonOwnedBranch>) Collection ToDependent JsonEntityBasic.OwnedReferenceRoot#JsonOwnedRoot.OwnedCollectionBranch#JsonOwnedBranch}")
+                    {
+                        Console.WriteLine("gfg");
+                    }
+
                     foreach (var relatedEntity in ((IEnumerable)navigationValue).Cast<object>().ToList())
                     {
                         var targetEntry = stateManager.GetOrCreateEntry(relatedEntity, targetEntityType);

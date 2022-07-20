@@ -1208,7 +1208,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                             null,
                             ExtractJsonPropertyMethodInfo,
                             jsonElementParameter,
-                            Expression.Constant(property.GetJsonElementName()),
+                            Expression.Constant(property.JsonElementName()),
                             Expression.Constant(converter.ProviderClrType));
 
                         return Expression.Invoke(
@@ -1223,7 +1223,7 @@ public partial class RelationalShapedQueryCompilingExpressionVisitor
                                 null,
                                 ExtractJsonPropertyMethodInfo,
                                 jsonElementParameter,
-                                Expression.Constant(property.GetJsonElementName()),
+                                Expression.Constant(property.JsonElementName()),
                                 Expression.Constant(property.ClrType)),
                             property.ClrType);
                     }

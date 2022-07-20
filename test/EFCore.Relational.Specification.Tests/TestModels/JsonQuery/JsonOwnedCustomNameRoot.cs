@@ -14,7 +14,6 @@ namespace Microsoft.EntityFrameworkCore.TestModels.JsonQuery
         public int Number { get; set; }
 
         [JsonPropertyName("CustomEnum")]
-        [JsonConverter(typeof(EnumToStringConverter<JsonEnum>))]
         public JsonEnum Enum { get; set; }
 
         [JsonPropertyName("CustomOwnedReferenceBranch")]

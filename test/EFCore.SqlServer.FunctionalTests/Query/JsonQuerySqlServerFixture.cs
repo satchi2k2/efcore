@@ -15,28 +15,28 @@ public class JsonQuerySqlServerFixture : JsonQueryFixtureBase
     {
         base.Seed(context);
 
-        var jsonEntitiesBasic = JsonQueryData.CreateJsonEntitiesBasic();
-        foreach (var jsonEntityBasic in jsonEntitiesBasic)
-        {
-            var jsonReference = JsonSerializer.Serialize(jsonEntityBasic.OwnedReferenceRoot);
-            var jsonCollection = JsonSerializer.Serialize(jsonEntityBasic.OwnedCollectionRoot);
+     //   var jsonEntitiesBasic = JsonQueryData.CreateJsonEntitiesBasic();
+     //   foreach (var jsonEntityBasic in jsonEntitiesBasic)
+     //   {
+     //       var jsonReference = JsonSerializer.Serialize(jsonEntityBasic.OwnedReferenceRoot);
+     //       var jsonCollection = JsonSerializer.Serialize(jsonEntityBasic.OwnedCollectionRoot);
 
-            var sql = $@"INSERT INTO [dbo].[JsonEntitiesBasic]
-           ([Name]
-           ,[OwnedCollectionRoot]
-           ,[OwnedReferenceRoot])
-     VALUES
-           ('{jsonEntityBasic.Name}'
-           ,'{jsonCollection}'
-           ,'{jsonReference}')";
+     //       var sql = $@"INSERT INTO [dbo].[JsonEntitiesBasic]
+     //      ([Name]
+     //      ,[OwnedCollectionRoot]
+     //      ,[OwnedReferenceRoot])
+     //VALUES
+     //      ('{jsonEntityBasic.Name}'
+     //      ,'{jsonCollection}'
+     //      ,'{jsonReference}')";
 
-            context.Database.ExecuteSqlRaw(sql
-                .Replace("{", "{{")
-                .Replace("}", "}}")
-                .Replace(@"""Enum"":0", @"""Enum"":""One""")
-                .Replace(@"""Enum"":1", @"""Enum"":""Two""")
-                .Replace(@"""Enum"":2", @"""Enum"":""Three"""));
-        }
+     //       context.Database.ExecuteSqlRaw(sql
+     //           .Replace("{", "{{")
+     //           .Replace("}", "}}")
+     //           .Replace(@"""Enum"":0", @"""Enum"":""One""")
+     //           .Replace(@"""Enum"":1", @"""Enum"":""Two""")
+     //           .Replace(@"""Enum"":2", @"""Enum"":""Three"""));
+     //   }
 
         var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
         foreach (var jsonEntityCustomNaming in jsonEntitiesCustomNaming)

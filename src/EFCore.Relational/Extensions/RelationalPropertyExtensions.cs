@@ -1858,7 +1858,7 @@ public static class RelationalPropertyExtensions
     /// <summary>
     /// TODO
     /// </summary>
-    public static string GetJsonElementName(this IReadOnlyProperty property)
+    public static string JsonElementName(this IReadOnlyProperty property)
         => (string?)property.FindAnnotation(RelationalAnnotationNames.JsonElementName)?.Value ?? property.Name;
 
     /// <summary>
@@ -1888,6 +1888,6 @@ public static class RelationalPropertyExtensions
     /// <summary>
     /// TODO
     /// </summary>
-    public static ConfigurationSource? GetJsonElementNameConfigurationSource(this IConventionProperty property)
+    public static ConfigurationSource? JsonElementNameConfigurationSource(this IConventionProperty property)
         => property.FindAnnotation(RelationalAnnotationNames.JsonElementName)?.GetConfigurationSource();
 }

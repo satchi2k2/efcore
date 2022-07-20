@@ -43,6 +43,15 @@ public class RelationalValueGeneratorSelector : ValueGeneratorSelector
     /// <inheritdoc />
     protected override ValueGenerator? FindForType(IProperty property, IEntityType entityType, Type clrType)
     {
+        if (entityType.IsMappedToJson()
+            && property.IsShadowProperty()
+            && property.Name == "Id"
+            && property.ClrType == typeof(int))
+        {
+            return _numberFactory.Create(property, entityType);
+            //return new TemporaryNumberValueGeneratorFactory().Create(property, entityType);
+        }
+
         if (property.ValueGenerated != ValueGenerated.Never)
         {
             if (clrType.IsInteger()
