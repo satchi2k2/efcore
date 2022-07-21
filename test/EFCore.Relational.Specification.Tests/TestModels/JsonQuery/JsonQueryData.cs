@@ -53,7 +53,7 @@ public class JsonQueryData : ISetSource
             Date = new DateTime(2101, 1, 1),
             Fraction = 10.1M,
             Enum = JsonEnum.Two,
-            //OwnedReferenceLeaf = e1_r_c1_r,
+            OwnedReferenceLeaf = e1_r_c1_r,
             OwnedCollectionLeaf = new List<JsonOwnedLeaf> { e1_r_c1_c1, e1_r_c1_c2 }
         };
 
@@ -71,7 +71,7 @@ public class JsonQueryData : ISetSource
             Date = new DateTime(2102, 1, 1),
             Fraction = 10.2M,
             Enum = JsonEnum.Three,
-            //OwnedReferenceLeaf = e1_r_c2_r,
+            OwnedReferenceLeaf = e1_r_c2_r,
             OwnedCollectionLeaf = new List<JsonOwnedLeaf> { e1_r_c2_c1, e1_r_c2_c2 }
         };
 
@@ -83,8 +83,8 @@ public class JsonQueryData : ISetSource
         {
             Name = "e1_r",
             Number = 10,
-            //OwnedReferenceBranch = e1_r_r,
-            //OwnedCollectionBranch = new List<JsonOwnedBranch> { e1_r_c1, e1_r_c2 }
+            OwnedReferenceBranch = e1_r_r,
+            OwnedCollectionBranch = new List<JsonOwnedBranch> { e1_r_c1, e1_r_c2 }
         };
 
         //-------------------------------------------------------------------------------------------

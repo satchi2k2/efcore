@@ -38,92 +38,92 @@ public class JsonQuerySqlServerFixture : JsonQueryFixtureBase
      //           .Replace(@"""Enum"":2", @"""Enum"":""Three"""));
      //   }
 
-        var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
-        foreach (var jsonEntityCustomNaming in jsonEntitiesCustomNaming)
-        {
-            // reference has explicit conversion defined to store enum as int
-            var jsonReference = JsonSerializer.Serialize(jsonEntityCustomNaming.OwnedReferenceRoot);
-            var jsonCollection = JsonSerializer.Serialize(jsonEntityCustomNaming.OwnedCollectionRoot)
-                .Replace(@"""CustomEnum"":0", @"""CustomEnum"":""One""")
-                .Replace(@"""CustomEnum"":1", @"""CustomEnum"":""Two""")
-                .Replace(@"""CustomEnum"":2", @"""CustomEnum"":""Three""");
+//        var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
+//        foreach (var jsonEntityCustomNaming in jsonEntitiesCustomNaming)
+//        {
+//            // reference has explicit conversion defined to store enum as int
+//            var jsonReference = JsonSerializer.Serialize(jsonEntityCustomNaming.OwnedReferenceRoot);
+//            var jsonCollection = JsonSerializer.Serialize(jsonEntityCustomNaming.OwnedCollectionRoot)
+//                .Replace(@"""CustomEnum"":0", @"""CustomEnum"":""One""")
+//                .Replace(@"""CustomEnum"":1", @"""CustomEnum"":""Two""")
+//                .Replace(@"""CustomEnum"":2", @"""CustomEnum"":""Three""");
 
-            var sql = $@"INSERT INTO [dbo].[JsonEntitiesCustomNaming]
-           ([Title]
-           ,[json_collection_custom_naming]
-           ,[json_reference_custom_naming])
-     VALUES
-           ('{jsonEntityCustomNaming.Title}'
-           ,'{AddCustomNaming(jsonCollection)}'
-           ,'{AddCustomNaming(jsonReference)}')";
+//            var sql = $@"INSERT INTO [dbo].[JsonEntitiesCustomNaming]
+//           ([Title]
+//           ,[json_collection_custom_naming]
+//           ,[json_reference_custom_naming])
+//     VALUES
+//           ('{jsonEntityCustomNaming.Title}'
+//           ,'{AddCustomNaming(jsonCollection)}'
+//           ,'{AddCustomNaming(jsonReference)}')";
 
-            context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
-        }
+//            context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
+//        }
 
-        var jsonEntitiesSingleOwned = JsonQueryData.CreateJsonEntitiesSingleOwned();
-        foreach (var jsonEntitySingleOwned in jsonEntitiesSingleOwned)
-        {
-            var jsonCollection = JsonSerializer.Serialize(jsonEntitySingleOwned.OwnedCollection);
+//        var jsonEntitiesSingleOwned = JsonQueryData.CreateJsonEntitiesSingleOwned();
+//        foreach (var jsonEntitySingleOwned in jsonEntitiesSingleOwned)
+//        {
+//            var jsonCollection = JsonSerializer.Serialize(jsonEntitySingleOwned.OwnedCollection);
 
-            var sql = $@"INSERT INTO [dbo].[JsonEntitiesSingleOwned]
-           ([Name]
-           ,[OwnedCollection])
-     VALUES
-           ('{jsonEntitySingleOwned.Name}'
-           ,'{AddCustomNaming(jsonCollection)}')";
+//            var sql = $@"INSERT INTO [dbo].[JsonEntitiesSingleOwned]
+//           ([Name]
+//           ,[OwnedCollection])
+//     VALUES
+//           ('{jsonEntitySingleOwned.Name}'
+//           ,'{AddCustomNaming(jsonCollection)}')";
 
-            context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
-        }
+//            context.Database.ExecuteSqlRaw(sql.Replace("{", "{{").Replace("}", "}}"));
+//        }
 
-        var jsonEntitiesInheritance = JsonQueryData.CreateJsonEntitiesInheritance();
-        foreach (var jsonEntityInheritance in jsonEntitiesInheritance)
-        {
-            var jsonReferenceOnBase = JsonSerializer.Serialize(jsonEntityInheritance.ReferenceOnBase);
-            var jsonCollectionOnBase = JsonSerializer.Serialize(jsonEntityInheritance.CollectionOnBase);
+//        var jsonEntitiesInheritance = JsonQueryData.CreateJsonEntitiesInheritance();
+//        foreach (var jsonEntityInheritance in jsonEntitiesInheritance)
+//        {
+//            var jsonReferenceOnBase = JsonSerializer.Serialize(jsonEntityInheritance.ReferenceOnBase);
+//            var jsonCollectionOnBase = JsonSerializer.Serialize(jsonEntityInheritance.CollectionOnBase);
 
-            var values = $@"
-           ('{jsonEntityInheritance.Name}'
-           ,NULL
-           ,'JsonEntityInheritanceBase'
-           ,'{jsonReferenceOnBase}'
-           ,'{jsonCollectionOnBase}'
-           ,NULL
-           ,NULL)";
+//            var values = $@"
+//           ('{jsonEntityInheritance.Name}'
+//           ,NULL
+//           ,'JsonEntityInheritanceBase'
+//           ,'{jsonReferenceOnBase}'
+//           ,'{jsonCollectionOnBase}'
+//           ,NULL
+//           ,NULL)";
 
-            if (jsonEntityInheritance is JsonEntityInheritanceDerived derived)
-            {
-                var jsonReferenceOnDerived = JsonSerializer.Serialize(derived.ReferenceOnDerived);
-                var jsonCollectionOnDerived = JsonSerializer.Serialize(derived.CollectionOnDerived);
+//            if (jsonEntityInheritance is JsonEntityInheritanceDerived derived)
+//            {
+//                var jsonReferenceOnDerived = JsonSerializer.Serialize(derived.ReferenceOnDerived);
+//                var jsonCollectionOnDerived = JsonSerializer.Serialize(derived.CollectionOnDerived);
 
-                values = $@"
-    ('{jsonEntityInheritance.Name}'
-    ,{derived.Fraction}
-    ,'JsonEntityInheritanceDerived'
-    ,'{jsonReferenceOnBase}'
-    ,'{jsonCollectionOnBase}'
-    ,'{jsonReferenceOnDerived}'
-    ,'{jsonCollectionOnDerived}')";
-            }
+//                values = $@"
+//    ('{jsonEntityInheritance.Name}'
+//    ,{derived.Fraction}
+//    ,'JsonEntityInheritanceDerived'
+//    ,'{jsonReferenceOnBase}'
+//    ,'{jsonCollectionOnBase}'
+//    ,'{jsonReferenceOnDerived}'
+//    ,'{jsonCollectionOnDerived}')";
+//            }
 
-            var sql = $@"INSERT INTO [dbo].[JsonEntityInheritanceBase]
-    ([Name]
-    ,[Fraction]
-    ,[Discriminator]
-    ,[ReferenceOnBase]
-    ,[CollectionOnBase]
-    ,[ReferenceOnDerived]
-    ,[CollectionOnDerived])
-VALUES" + values;
+//            var sql = $@"INSERT INTO [dbo].[JsonEntityInheritanceBase]
+//    ([Name]
+//    ,[Fraction]
+//    ,[Discriminator]
+//    ,[ReferenceOnBase]
+//    ,[CollectionOnBase]
+//    ,[ReferenceOnDerived]
+//    ,[CollectionOnDerived])
+//VALUES" + values;
 
-            context.Database.ExecuteSqlRaw(sql
-                .Replace("{", "{{")
-                .Replace("}", "}}")
-                .Replace(@"""Enum"":0", @"""Enum"":""One""")
-                .Replace(@"""Enum"":1", @"""Enum"":""Two""")
-                .Replace(@"""Enum"":2", @"""Enum"":""Three"""));
-        }
+//            context.Database.ExecuteSqlRaw(sql
+//                .Replace("{", "{{")
+//                .Replace("}", "}}")
+//                .Replace(@"""Enum"":0", @"""Enum"":""One""")
+//                .Replace(@"""Enum"":1", @"""Enum"":""Two""")
+//                .Replace(@"""Enum"":2", @"""Enum"":""Three"""));
+//        }
 
-        static string AddCustomNaming(string json)
-            => json;
+//        static string AddCustomNaming(string json)
+//            => json;
     }
 }

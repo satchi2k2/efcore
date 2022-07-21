@@ -373,7 +373,7 @@ ORDER BY [j].[Id]");
 
         AssertSql(
             @"SELECT [j].[Id], [j].[Discriminator], [j].[Name], [j].[Fraction], JSON_QUERY([j].[CollectionOnBase],'$'), JSON_QUERY([j].[ReferenceOnBase],'$'), JSON_QUERY([j].[CollectionOnDerived],'$'), JSON_QUERY([j].[ReferenceOnDerived],'$')
-FROM [JsonEntityInheritanceBase] AS [j]");
+FROM [JsonEntitiesInheritance] AS [j]");
     }
 
     public override async Task Json_entity_with_inheritance_project_derived(bool async)
@@ -382,7 +382,7 @@ FROM [JsonEntityInheritanceBase] AS [j]");
 
         AssertSql(
             @"SELECT [j].[Id], [j].[Discriminator], [j].[Name], [j].[Fraction], JSON_QUERY([j].[CollectionOnBase],'$'), JSON_QUERY([j].[ReferenceOnBase],'$'), JSON_QUERY([j].[CollectionOnDerived],'$'), JSON_QUERY([j].[ReferenceOnDerived],'$')
-FROM [JsonEntityInheritanceBase] AS [j]
+FROM [JsonEntitiesInheritance] AS [j]
 WHERE [j].[Discriminator] = N'JsonEntityInheritanceDerived'");
     }
 
@@ -392,7 +392,7 @@ WHERE [j].[Discriminator] = N'JsonEntityInheritanceDerived'");
 
         AssertSql(
             @"SELECT [j].[Id], JSON_QUERY([j].[ReferenceOnBase],'$'), JSON_QUERY([j].[CollectionOnBase],'$')
-FROM [JsonEntityInheritanceBase] AS [j]");
+FROM [JsonEntitiesInheritance] AS [j]");
     }
 
     public override async Task Json_entity_with_inheritance_project_navigations_on_derived(bool async)
@@ -401,7 +401,7 @@ FROM [JsonEntityInheritanceBase] AS [j]");
 
         AssertSql(
             @"SELECT [j].[Id], [j].[Discriminator], [j].[Name], [j].[Fraction], JSON_QUERY([j].[CollectionOnBase],'$'), JSON_QUERY([j].[ReferenceOnBase],'$'), JSON_QUERY([j].[CollectionOnDerived],'$'), JSON_QUERY([j].[ReferenceOnDerived],'$')
-FROM [JsonEntityInheritanceBase] AS [j]
+FROM [JsonEntitiesInheritance] AS [j]
 WHERE [j].[Discriminator] = N'JsonEntityInheritanceDerived'");
     }
 

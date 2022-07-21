@@ -185,11 +185,36 @@ public class ValueGenerationConvention :
     /// <param name="property">The property.</param>
     /// <returns>The store value generation strategy to set for the given property.</returns>
     public static ValueGenerated? GetValueGenerated(IReadOnlyProperty property)
-        => property.GetContainingForeignKeys().All(fk => fk.IsBaseLinking())
+    {
+        if (property.Name == "Id" && property.DeclaringEntityType.IsOwned())
+        {
+            Console.WriteLine("Gf");
+        }
+
+
+        var c1 = property.GetContainingForeignKeys().ToList();
+        var c2 = c1.All(fk => fk.IsBaseLinking());
+        var c3 = property.FindContainingPrimaryKey();
+        var c4 = ShouldHaveGeneratedProperty(c3);
+
+        return property.GetContainingForeignKeys().All(fk => fk.IsBaseLinking())
             && ShouldHaveGeneratedProperty(property.FindContainingPrimaryKey())
             && CanBeGenerated(property)
                 ? ValueGenerated.OnAdd
                 : null;
+    }
+
+
+
+
+
+
+
+        //=> property.GetContainingForeignKeys().All(fk => fk.IsBaseLinking())
+        //    && ShouldHaveGeneratedProperty(property.FindContainingPrimaryKey())
+        //    && CanBeGenerated(property)
+        //        ? ValueGenerated.OnAdd
+        //        : null;
 
     private static bool ShouldHaveGeneratedProperty(IReadOnlyKey? key)
         => key != null
@@ -222,6 +247,20 @@ public class ValueGenerationConvention :
     {
         foreach (var property in relationshipBuilder.Metadata.DeclaringEntityType.GetProperties())
         {
+            if (property.Name == "Id" && property.IsShadowProperty())
+            {
+                Console.WriteLine("");
+            }
+
+
+            var vg = GetValueGenerated(property);
+
+            if (vg == ValueGenerated.OnAdd)
+            {
+                Console.WriteLine("gfgf");
+            }
+
+
             property.Builder.ValueGenerated(GetValueGenerated(property));
         }
     }

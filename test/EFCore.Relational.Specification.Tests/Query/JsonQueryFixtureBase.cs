@@ -322,6 +322,7 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
             b.ToJson();
         });
 
+        modelBuilder.Entity<JsonEntityCustomNaming>().Property(x => x.Id).ValueGeneratedNever();
         modelBuilder.Entity<JsonEntityCustomNaming>().OwnsOne(x => x.OwnedReferenceRoot, b =>
         {
             b.Property(x => x.Enum).HasConversion<int>();
@@ -338,8 +339,10 @@ public abstract class JsonQueryFixtureBase : SharedStoreFixtureBase<JsonQueryCon
             b.OwnsMany(x => x.OwnedCollectionBranch);
         });
 
+        modelBuilder.Entity<JsonEntitySingleOwned>().Property(x => x.Id).ValueGeneratedNever();
         modelBuilder.Entity<JsonEntitySingleOwned>().OwnsMany(x => x.OwnedCollection, b => b.ToJson());
 
+        modelBuilder.Entity<JsonEntityInheritanceBase>().Property(x => x.Id).ValueGeneratedNever();
         modelBuilder.Entity<JsonEntityInheritanceBase>(b =>
         {
             b.OwnsOne(x => x.ReferenceOnBase, bb =>

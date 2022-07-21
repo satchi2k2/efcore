@@ -82,7 +82,16 @@ public static class PropertyExtensions
                 && (!property.IsForeignKey()
                     || property.IsForeignKeyToSelf()
                     || (property.GetContainingForeignKeys().All(fk => fk.Properties.Any(p => p != property && p.IsNullable)))))
-            || property.GetValueGeneratorFactory() != null;
+            || property.GetValueGeneratorFactory() != null
+
+        // giga hack until i know what the hell is going on in update code
+        || (property.DeclaringEntityType.IsOwned()
+            && property.DeclaringEntityType.FindAnnotation("Relational:JsonColumnName") is IAnnotation annotation
+            && annotation != null
+            && property.IsShadowProperty()
+            && property.Name == "Id"
+            && property.ClrType == typeof(int))
+        ;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -123,6 +132,11 @@ public static class PropertyExtensions
     /// </summary>
     public static bool MayBeStoreGenerated(this IProperty property)
     {
+        if (property.Name == "Id" && property.IsShadowProperty())
+        {
+            Console.WriteLine("");
+        }
+
         if (property.ValueGenerated != ValueGenerated.Never)
         {
             return true;

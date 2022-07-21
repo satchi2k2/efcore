@@ -580,10 +580,15 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
             var jsonElementName = property.JsonElementName();
 
             var value = entry.GetCurrentProviderValue(property);
-            var jsonValue = value == null
-                ? null
-                : JsonSerializer.Serialize(value);
-            jsonNode[jsonElementName] = jsonValue;
+            var propertyTypeMapping = property.GetTypeMapping();
+            var propertyType = propertyTypeMapping.Converter?.ProviderClrType ?? propertyTypeMapping.ClrType;
+
+            jsonNode[jsonElementName] = JsonValue.Create(value);
+
+            //var jsonValue = value == null
+            //    ? null
+            //    : JsonSerializer.Serialize(value, propertyType);
+            //jsonNode[jsonElementName] = jsonValue;// jsonValue;
         }
 
         foreach (var navigation in entityType.GetDeclaredNavigations())

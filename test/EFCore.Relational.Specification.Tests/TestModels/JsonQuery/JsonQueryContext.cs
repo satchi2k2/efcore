@@ -18,14 +18,19 @@ namespace Microsoft.EntityFrameworkCore.TestModels.JsonQuery
         public static void Seed(JsonQueryContext context)
         {
             var jsonEntitiesBasic = JsonQueryData.CreateJsonEntitiesBasic();
-            //var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
-            //var jsonEntitiesSingleOwned = JsonQueryData.CreateJsonEntitiesSingleOwned();
-            //var jsonEntitiesInheritance = JsonQueryData.CreateJsonEntitiesInheritance();
+            var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
+            var jsonEntitiesSingleOwned = JsonQueryData.CreateJsonEntitiesSingleOwned();
+            var jsonEntitiesInheritance = JsonQueryData.CreateJsonEntitiesInheritance();
 
             context.JsonEntitiesBasic.AddRange(jsonEntitiesBasic);
-            //context.JsonEntitiesCustomNaming.AddRange(jsonEntitiesCustomNaming);
-            //context.JsonEntitiesSingleOwned.AddRange(jsonEntitiesSingleOwned);
-            //context.JsonEntitiesInheritance.AddRange(jsonEntitiesInheritance);
+            context.JsonEntitiesCustomNaming.AddRange(jsonEntitiesCustomNaming);
+            context.JsonEntitiesSingleOwned.AddRange(jsonEntitiesSingleOwned);
+            context.JsonEntitiesInheritance.AddRange(jsonEntitiesInheritance);
+            context.SaveChanges();
+
+            var entity = jsonEntitiesBasic[0];
+
+            entity.OwnedReferenceRoot.Name = "sikson";
             context.SaveChanges();
         }
     }
