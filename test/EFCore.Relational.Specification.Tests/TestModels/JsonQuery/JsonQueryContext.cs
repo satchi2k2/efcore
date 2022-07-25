@@ -30,6 +30,7 @@ namespace Microsoft.EntityFrameworkCore.TestModels.JsonQuery
 
             var entity = jsonEntitiesBasic[0];
 
+            entity.Name = "dupson";
             entity.OwnedReferenceRoot.Name = "sikson";
             context.SaveChanges();
         }

@@ -248,6 +248,11 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
         var columnModifications = new List<IColumnModification>();
         Dictionary<string, ColumnValuePropagator>? sharedTableColumnMap = null;
 
+        if (updating)
+        {
+            Console.WriteLine("hhhj");
+        }
+
         if (_entries.Count > 1
             || (_entries.Count == 1 && _entries[0].SharedIdentityEntry != null))
         {
@@ -361,57 +366,41 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
 
                 processedRootEntries.Add(currentEntry);
 
-                // TODO: are entries guaranteed to be in order they are in the json collection?
-                int? rootOrdinal = null;
-                if (!ownership.IsUnique)
+                // for update, only create json document if there were any changes (for now we re-create the entire thing)
+                if (!updating || AnyChangesInJsonAggreagate(currentEntry))
                 {
-                    rootOrdinal = rootOrdinalMap.ContainsKey(ownership)
-                        ? rootOrdinalMap[ownership] + 1
-                        : 1;
-
-                    rootOrdinalMap[ownership] = rootOrdinal.Value;
-                }
-
-                var jsonRootEntity = ownership.DeclaringEntityType;
-                var json = CreateJsonDocument(currentEntry, jsonRootEntity, rootOrdinal);
-
-                if (ownership.IsUnique)
-                {
-                    jsonMap[ownership] = json;
-                }
-                else
-                {
-                    if (!jsonMap.TryGetValue(ownership, out var existingArray))
+                    // TODO: are entries guaranteed to be in order they are in the json collection?
+                    int? rootOrdinal = null;
+                    if (!ownership.IsUnique)
                     {
-                        existingArray = new JsonArray(json);
-                        jsonMap[ownership] = existingArray;
+                        rootOrdinal = rootOrdinalMap.ContainsKey(ownership)
+                            ? rootOrdinalMap[ownership] + 1
+                            : 1;
+
+                        rootOrdinalMap[ownership] = rootOrdinal.Value;
+                    }
+
+                    var jsonRootEntity = ownership.DeclaringEntityType;
+                    var json = CreateJsonDocument(currentEntry, jsonRootEntity, rootOrdinal);
+
+                    if (ownership.IsUnique)
+                    {
+                        jsonMap[ownership] = json;
                     }
                     else
                     {
-                        ((JsonArray)existingArray).Add(json);
+                        if (!jsonMap.TryGetValue(ownership, out var existingArray))
+                        {
+                            existingArray = new JsonArray(json);
+                            jsonMap[ownership] = existingArray;
+                        }
+                        else
+                        {
+                            ((JsonArray)existingArray).Add(json);
+                        }
                     }
                 }
 
-                //jsonMap[ownership] = json;
-
-                //var typeMapping = jsonRootEntity.JsonColumnTypeMapping()!;
-                //var columnModificationParameters = new ColumnModificationParameters(
-                //    jsonRootEntity.JsonColumnName()!,
-                //    originalValue: null,
-                //    value: json.ToJsonString(),
-                //    property: null,
-                //    columnType: typeMapping.StoreType,
-                //    typeMapping,
-                //    read: false,
-                //    write: true,
-                //    key: false,
-                //    condition: false,
-                //    _sensitiveLoggingEnabled)
-                //{
-                //    GenerateParameterName = _generateParameterName,
-                //};
-
-                //columnModifications.Add(new ColumnModification(columnModificationParameters));
                 continue;
             }
 
@@ -557,12 +546,6 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
         var jsonNode = JsonNode.Parse("{}")!;
         foreach (var property in entityType.GetDeclaredProperties())
         {
-            //// this needs to change when we support explicitly defined ordinal keys
-            //if (property.IsKey())
-            //{
-            //    continue;
-            //}
-
             if (property.IsKey())
             {
                 if (IsOrdinalKey(property))
@@ -597,7 +580,6 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
             var navigationValue = entry.GetCurrentValue(navigation)!;
             if (navigationValue != null)
             {
-
                 if (navigation.IsCollection)
                 {
                     var jsonNodes = new List<JsonNode>();
@@ -635,6 +617,53 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
         return jsonNode;
     }
 
+    private bool AnyChangesInJsonAggreagate(IUpdateEntry entry)
+    {
+        foreach (var property in entry.EntityType.GetDeclaredProperties().Where(p => !p.IsKey()))
+        {
+            if (entry.IsModified(property))
+            {
+                return true;
+            }
+        }
+
+        foreach (var navigation in entry.EntityType.GetDeclaredNavigations())
+        {
+            var navigationValue = entry.GetCurrentValue(navigation)!;
+
+            if (navigationValue != null)
+            {
+                if (navigation.IsCollection)
+                {
+                    foreach (var navigationElement in (IEnumerable)navigationValue)
+                    {
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                        var ownedEntry = ((InternalEntityEntry)entry).StateManager.TryGetEntry(navigationElement, navigation.ForeignKey.DeclaringEntityType)!;
+#pragma warning restore EF1001 // Internal EF Core API usage.
+
+                        if (AnyChangesInJsonAggreagate(ownedEntry))
+                        {
+                            return true;
+                        }
+                    }
+                }
+                else
+                {
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                    var ownedEntry = ((InternalEntityEntry)entry).StateManager.TryGetEntry(navigationValue, navigation.ForeignKey.DeclaringEntityType)!;
+#pragma warning restore EF1001 // Internal EF Core API usage.
+
+                    if (AnyChangesInJsonAggreagate(ownedEntry))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
     private ITableMapping? GetTableMapping(IEntityType entityType)
     {
         ITableMapping? tableMapping = null;
@@ -660,6 +689,11 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
     {
         foreach (var columnMapping in tableMapping.ColumnMappings)
         {
+            if (columnMapping.Property.DeclaringEntityType.IsMappedToJson())
+            {
+                continue;
+            }
+
             var columnName = columnMapping.Column.Name;
             if (!columnMap.TryGetValue(columnName, out var columnPropagator))
             {
