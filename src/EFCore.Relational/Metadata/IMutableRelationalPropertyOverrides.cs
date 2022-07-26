@@ -28,7 +28,7 @@ public interface IMutableRelationalPropertyOverrides : IReadOnlyRelationalProper
     /// </summary>
     new ParameterDirection? Direction
     {
-        get => ((ParameterDirection?)this[RelationalAnnotationNames.ParameterDirection]);
+        get => (ParameterDirection?)this[RelationalAnnotationNames.ParameterDirection];
         set => SetAnnotation(RelationalAnnotationNames.ParameterDirection, value);
     }
 

@@ -61,16 +61,40 @@ public interface IConventionStoredProcedure : IReadOnlyStoredProcedure, IConvent
     /// </summary>
     /// <param name="propertyName">The name of the corresponding property.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
-    /// <returns>The configured value.</returns>
-    string? AddParameter(string propertyName, bool fromDataAnnotation = false);
+    /// <returns>The added parameter.</returns>
+    IConventionStoredProcedureParameter? AddParameter(string propertyName, bool fromDataAnnotation = false);
+
+    /// <summary>
+    ///     Adds a new parameter that will hold the original value of the property with the given name.
+    /// </summary>
+    /// <param name="propertyName">The name of the corresponding property.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The added parameter.</returns>
+    IConventionStoredProcedureParameter? AddOriginalValueParameter(string propertyName, bool fromDataAnnotation = false);
+
+    /// <summary>
+    ///     Adds an output parameter that returns the rows affected by this stored procedure.
+    /// </summary>
+    /// <param name="parameterName">The name of the parameter.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The added parameter.</returns>
+    IConventionStoredProcedureParameter? AddRowsAffectedParameter(string parameterName, bool fromDataAnnotation = false);
 
     /// <summary>
     ///     Adds a new column of the result for this stored procedure mapped to the property with the given name
     /// </summary>
     /// <param name="propertyName">The name of the corresponding property.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
-    /// <returns>The configured value.</returns>
-    string? AddResultColumn(string propertyName, bool fromDataAnnotation = false);
+    /// <returns>The added column.</returns>
+    IConventionStoredProcedureResultColumn? AddResultColumn(string propertyName, bool fromDataAnnotation = false);
+
+    /// <summary>
+    ///     Adds a new column of the result that contains the rows affected by this stored procedure.
+    /// </summary>
+    /// <param name="columnName">The name of the column.</param>
+    /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
+    /// <returns>The added column.</returns>
+    IConventionStoredProcedureResultColumn? AddRowsAffectedResultColumn(string columnName, bool fromDataAnnotation = false);
 
     /// <summary>
     ///     Prevents automatically creating a transaction when executing this stored procedure.

@@ -6,43 +6,29 @@ using System.Text;
 namespace Microsoft.EntityFrameworkCore.Metadata;
 
 /// <summary>
-///     Represents a function parameter.
+///     Represents a stored procedure result column.
 /// </summary>
-/// <remarks>
-///     See <see href="https://aka.ms/efcore-docs-database-functions">Database functions</see> for more information and examples.
-/// </remarks>
-public interface IReadOnlyDbFunctionParameter : IReadOnlyAnnotatable
+public interface IReadOnlyStoredProcedureResultColumn : IReadOnlyAnnotatable
 {
     /// <summary>
-    ///     Gets the function to which this parameter belongs.
+    ///     Gets the stored procedure to which this result column belongs.
     /// </summary>
-    IReadOnlyDbFunction Function { get; }
-
+    IReadOnlyStoredProcedure StoredProcedure { get; }
+    
     /// <summary>
-    ///     Gets the parameter name.
+    ///     Gets the result column name.
     /// </summary>
     string Name { get; }
 
     /// <summary>
-    ///     Gets the parameter type.
+    ///     Gets the name of property mapped to this result column.
     /// </summary>
-    Type ClrType { get; }
+    string? PropertyName { get; }
 
     /// <summary>
-    ///     Gets the store type of this parameter.
+    ///     Gets a value indicating whether the result column will hold the rows affected by the stored procedure.
     /// </summary>
-    string? StoreType { get; }
-
-    /// <summary>
-    ///     Gets the value which indicates whether the parameter propagates nullability,
-    ///     meaning if it's value is <see langword="null" /> the database function itself returns <see langword="null" />.
-    /// </summary>
-    bool PropagatesNullability { get; }
-
-    /// <summary>
-    ///     Gets the type mapping for this parameter.
-    /// </summary>
-    RelationalTypeMapping? TypeMapping { get; }
+    bool ForRowsAffected { get; }
 
     /// <summary>
     ///     <para>
@@ -63,11 +49,9 @@ public interface IReadOnlyDbFunctionParameter : IReadOnlyAnnotatable
 
         builder
             .Append(indentString)
-            .Append("DbFunctionParameter: ");
+            .Append("StoredProcedureResultColumn: ");
 
-        builder.Append(Name)
-            .Append(' ')
-            .Append(StoreType);
+        builder.Append(Name);
 
         if ((options & MetadataDebugStringOptions.SingleLine) == 0)
         {

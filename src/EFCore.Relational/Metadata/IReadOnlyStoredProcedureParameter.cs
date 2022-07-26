@@ -1,48 +1,45 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Data;
 using System.Text;
 
 namespace Microsoft.EntityFrameworkCore.Metadata;
 
 /// <summary>
-///     Represents a function parameter.
+///     Represents a stored procedure parameter.
 /// </summary>
-/// <remarks>
-///     See <see href="https://aka.ms/efcore-docs-database-functions">Database functions</see> for more information and examples.
-/// </remarks>
-public interface IReadOnlyDbFunctionParameter : IReadOnlyAnnotatable
+public interface IReadOnlyStoredProcedureParameter : IReadOnlyAnnotatable
 {
     /// <summary>
-    ///     Gets the function to which this parameter belongs.
+    ///     Gets the stored procedure to which this parameter belongs.
     /// </summary>
-    IReadOnlyDbFunction Function { get; }
-
+    IReadOnlyStoredProcedure StoredProcedure { get; }
+    
     /// <summary>
     ///     Gets the parameter name.
     /// </summary>
     string Name { get; }
 
     /// <summary>
-    ///     Gets the parameter type.
+    ///     Gets the name of property mapped to this parameter.
     /// </summary>
-    Type ClrType { get; }
+    string? PropertyName { get; }
+    
+    /// <summary>
+    ///     Gets the direction of the parameter.
+    /// </summary>
+    static ParameterDirection Direction { get; }
 
     /// <summary>
-    ///     Gets the store type of this parameter.
+    ///     Gets a value indicating whether the parameter will hold the original or the current property value.
     /// </summary>
-    string? StoreType { get; }
+    bool? ForOriginalValue { get; }
 
     /// <summary>
-    ///     Gets the value which indicates whether the parameter propagates nullability,
-    ///     meaning if it's value is <see langword="null" /> the database function itself returns <see langword="null" />.
+    ///     Gets a value indicating whether the parameter will hold the rows affected by the stored procedure.
     /// </summary>
-    bool PropagatesNullability { get; }
-
-    /// <summary>
-    ///     Gets the type mapping for this parameter.
-    /// </summary>
-    RelationalTypeMapping? TypeMapping { get; }
+    bool ForRowsAffected { get; }
 
     /// <summary>
     ///     <para>
@@ -63,11 +60,25 @@ public interface IReadOnlyDbFunctionParameter : IReadOnlyAnnotatable
 
         builder
             .Append(indentString)
-            .Append("DbFunctionParameter: ");
+            .Append("StoredProcedureParameter: ");
 
-        builder.Append(Name)
-            .Append(' ')
-            .Append(StoreType);
+        builder.Append(Name);
+
+        if (Direction != ParameterDirection.Input)
+        {
+            builder.Append(' ')
+                .Append(Direction);
+        }
+
+        if (ForOriginalValue == true)
+        {
+            builder.Append(" ForOriginalValue");
+        }
+
+        if (ForRowsAffected)
+        {
+            builder.Append(" ForRowsAffected");
+        }
 
         if ((options & MetadataDebugStringOptions.SingleLine) == 0)
         {

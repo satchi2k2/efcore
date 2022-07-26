@@ -36,13 +36,34 @@ public interface IMutableStoredProcedure : IReadOnlyStoredProcedure, IMutableAnn
     ///     Adds a new parameter mapped to the property with the given name.
     /// </summary>
     /// <param name="propertyName">The name of the corresponding property.</param>
-    /// <returns><see langword="true"/> if a parameter was added.</returns>
-    bool AddParameter(string propertyName);
+    /// <returns>The added parameter.</returns>
+    IMutableStoredProcedureParameter AddParameter(string propertyName);
+
+    /// <summary>
+    ///     Adds a new parameter that will hold the original value of the property with the given name.
+    /// </summary>
+    /// <param name="propertyName">The name of the corresponding property.</param>
+    /// <returns>The added parameter.</returns>
+    IMutableStoredProcedureParameter AddOriginalValueParameter(string propertyName);
+
+    /// <summary>
+    ///     Adds an output parameter that returns the rows affected by this stored procedure.
+    /// </summary>
+    /// <param name="parameterName">The name of the parameter.</param>
+    /// <returns>The added parameter.</returns>
+    IMutableStoredProcedureParameter AddRowsAffectedParameter(string parameterName);
 
     /// <summary>
     ///     Adds a new column of the result for this stored procedure mapped to the property with the given name
     /// </summary>
     /// <param name="propertyName">The name of the corresponding property.</param>
-    /// <returns><see langword="true"/> if a column was added.</returns>
-    bool AddResultColumn(string propertyName);
+    /// <returns>The added column.</returns>
+    IMutableStoredProcedureResultColumn AddResultColumn(string propertyName);
+
+    /// <summary>
+    ///     Adds a new column of the result that contains the rows affected by this stored procedure.
+    /// </summary>
+    /// <param name="columnName">The name of the column.</param>
+    /// <returns>The added column.</returns>
+    IMutableStoredProcedureResultColumn AddRowsAffectedResultColumn(string columnName);
 }

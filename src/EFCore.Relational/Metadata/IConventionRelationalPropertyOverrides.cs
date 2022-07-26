@@ -58,7 +58,7 @@ public interface IConventionRelationalPropertyOverrides : IReadOnlyRelationalPro
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
     /// <returns>The configured value.</returns>
     ParameterDirection? SetDirection(ParameterDirection? direction, bool fromDataAnnotation = false)
-        => ((ParameterDirection?)SetAnnotation(RelationalAnnotationNames.ParameterDirection, direction, fromDataAnnotation)?.Value);
+        => (ParameterDirection?)SetAnnotation(RelationalAnnotationNames.ParameterDirection, direction, fromDataAnnotation)?.Value;
 
     /// <summary>
     ///     Returns the configuration source for <see cref="IReadOnlyRelationalPropertyOverrides.Direction" />.
