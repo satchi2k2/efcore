@@ -11,7 +11,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
-public class OriginalValuePropertyStoredProcedureParameter :
+public class CurrentValuePropertyStoredProcedureParameter :
     ConventionAnnotatable,
     IMutableStoredProcedureParameter,
     IConventionStoredProcedureParameter,
@@ -22,7 +22,7 @@ public class OriginalValuePropertyStoredProcedureParameter :
 
     private ConfigurationSource? _nameConfigurationSource;
     private ConfigurationSource? _directionConfigurationSource;
-    private InternalOriginalValuePropertyStoredProcedureParameterBuilder? _builder;
+    private InternalCurrentValuePropertyStoredProcedureParameterBuilder? _builder;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -30,7 +30,7 @@ public class OriginalValuePropertyStoredProcedureParameter :
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public OriginalValuePropertyStoredProcedureParameter(
+    public CurrentValuePropertyStoredProcedureParameter(
         StoredProcedure storedProcedure,
         string propertyName)
     {
@@ -45,7 +45,7 @@ public class OriginalValuePropertyStoredProcedureParameter :
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual InternalOriginalValuePropertyStoredProcedureParameterBuilder Builder
+    public virtual InternalCurrentValuePropertyStoredProcedureParameterBuilder Builder
     {
         [DebuggerStepThrough]
         get => _builder ?? throw new InvalidOperationException(CoreStrings.ObjectRemovedFromModel);
@@ -198,11 +198,10 @@ public class OriginalValuePropertyStoredProcedureParameter :
     /// </summary>
     public virtual bool IsValid(ParameterDirection direction) => direction switch
     {
-        ParameterDirection.Output => false,
         ParameterDirection.ReturnValue => false,
         _ => true
     };
-    
+
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
@@ -250,12 +249,10 @@ public class OriginalValuePropertyStoredProcedureParameter :
     }
     
     /// <inheritdoc />
-    [DebuggerStepThrough]
     string IConventionStoredProcedureParameter.SetName(string name, bool fromDataAnnotation)
         => SetName(name, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
     
     /// <inheritdoc />
-    [DebuggerStepThrough]
     ParameterDirection IConventionStoredProcedureParameter.SetDirection(ParameterDirection direction, bool fromDataAnnotation)
         => SetDirection(direction, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 }

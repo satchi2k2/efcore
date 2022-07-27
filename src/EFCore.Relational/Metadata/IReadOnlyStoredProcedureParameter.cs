@@ -29,7 +29,7 @@ public interface IReadOnlyStoredProcedureParameter : IReadOnlyAnnotatable
     /// <summary>
     ///     Gets the direction of the parameter.
     /// </summary>
-    static ParameterDirection Direction { get; }
+    ParameterDirection Direction { get; }
 
     /// <summary>
     ///     Gets a value indicating whether the parameter will hold the original or the current property value.

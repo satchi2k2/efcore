@@ -57,6 +57,11 @@ public interface IConventionStoredProcedure : IReadOnlyStoredProcedure, IConvent
     ConfigurationSource? GetSchemaConfigurationSource();
 
     /// <summary>
+    ///     Gets the parameters for this stored procedure.
+    /// </summary>
+    new IReadOnlyList<IConventionStoredProcedureParameter> Parameters { get; }
+
+    /// <summary>
     ///     Adds a new parameter mapped to the property with the given name.
     /// </summary>
     /// <param name="propertyName">The name of the corresponding property.</param>
@@ -79,6 +84,11 @@ public interface IConventionStoredProcedure : IReadOnlyStoredProcedure, IConvent
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
     /// <returns>The added parameter.</returns>
     IConventionStoredProcedureParameter? AddRowsAffectedParameter(string parameterName, bool fromDataAnnotation = false);
+
+    /// <summary>
+    ///     Gets the columns of the result for this stored procedure.
+    /// </summary>
+    new IReadOnlyList<IConventionStoredProcedureResultColumn> ResultColumns { get; }
 
     /// <summary>
     ///     Adds a new column of the result for this stored procedure mapped to the property with the given name

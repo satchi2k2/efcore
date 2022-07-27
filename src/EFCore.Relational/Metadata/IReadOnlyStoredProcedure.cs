@@ -62,9 +62,9 @@ public interface IReadOnlyStoredProcedure : IReadOnlyAnnotatable
     }
 
     /// <summary>
-    ///     Gets the names of properties mapped to parameters for this stored procedure.
+    ///     Gets the parameters for this stored procedure.
     /// </summary>
-    IReadOnlyList<string> Parameters { get; }
+    IReadOnlyList<IReadOnlyStoredProcedureParameter> Parameters { get; }
 
     /// <summary>
     ///    Returns a value indicating whether there is a parameter corresponding to the given property.
@@ -74,9 +74,9 @@ public interface IReadOnlyStoredProcedure : IReadOnlyAnnotatable
     bool ContainsParameter(string propertyName);
 
     /// <summary>
-    ///     Gets the names of properties mapped to columns of the result for this stored procedure.
+    ///     Gets the columns of the result for this stored procedure.
     /// </summary>
-    IReadOnlyList<string> ResultColumns { get; }
+    IReadOnlyList<IReadOnlyStoredProcedureResultColumn> ResultColumns { get; }
 
     /// <summary>
     ///    Returns a value indicating whether there is a column of the result corresponding to the given property.

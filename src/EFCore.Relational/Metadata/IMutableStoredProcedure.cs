@@ -33,6 +33,11 @@ public interface IMutableStoredProcedure : IReadOnlyStoredProcedure, IMutableAnn
     new bool AreTransactionsSuppressed { get; set; }
 
     /// <summary>
+    ///     Gets the parameters for this stored procedure.
+    /// </summary>
+    new IReadOnlyList<IMutableStoredProcedureParameter> Parameters { get; }
+
+    /// <summary>
     ///     Adds a new parameter mapped to the property with the given name.
     /// </summary>
     /// <param name="propertyName">The name of the corresponding property.</param>
@@ -52,6 +57,11 @@ public interface IMutableStoredProcedure : IReadOnlyStoredProcedure, IMutableAnn
     /// <param name="parameterName">The name of the parameter.</param>
     /// <returns>The added parameter.</returns>
     IMutableStoredProcedureParameter AddRowsAffectedParameter(string parameterName);
+
+    /// <summary>
+    ///     Gets the columns of the result for this stored procedure.
+    /// </summary>
+    new IReadOnlyList<IMutableStoredProcedureResultColumn> ResultColumns { get; }
 
     /// <summary>
     ///     Adds a new column of the result for this stored procedure mapped to the property with the given name

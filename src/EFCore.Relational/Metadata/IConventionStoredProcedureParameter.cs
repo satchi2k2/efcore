@@ -20,7 +20,7 @@ public interface IConventionStoredProcedureParameter : IReadOnlyStoredProcedureP
     /// </summary>
     /// <param name="name">The parameter name.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
-    string? SetName(string name, bool fromDataAnnotation = false);
+    string SetName(string name, bool fromDataAnnotation = false);
 
     /// <summary>
     ///     Returns the configuration source for <see cref="IReadOnlyStoredProcedureParameter.Name" />.
@@ -33,7 +33,7 @@ public interface IConventionStoredProcedureParameter : IReadOnlyStoredProcedureP
     /// </summary>
     /// <param name="direction">The direction of the parameter.</param>
     /// <param name="fromDataAnnotation">Indicates whether the configuration was specified using a data annotation.</param>
-    string? SetDirection(ParameterDirection? direction, bool fromDataAnnotation = false);
+    ParameterDirection SetDirection(ParameterDirection direction, bool fromDataAnnotation = false);
 
     /// <summary>
     ///     Returns the configuration source for <see cref="IReadOnlyStoredProcedureParameter.Direction" />.

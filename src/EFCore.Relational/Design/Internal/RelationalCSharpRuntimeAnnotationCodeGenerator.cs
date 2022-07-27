@@ -495,16 +495,43 @@ public class RelationalCSharpRuntimeAnnotationCodeGenerator : CSharpRuntimeAnnot
 
         foreach (var parameter in storedProcedure.Parameters)
         {
-            mainBuilder.Append(sprocVariable).Append(".AddParameter(")
-                .Append(code.Literal(parameter))
-                .AppendLine(");");
+            mainBuilder.Append(sprocVariable);
+            if (parameter.ForRowsAffected)
+            {
+                mainBuilder.Append(".AddRowsAffectedParameter(")
+                    .Append(code.Literal(parameter.Name))
+                    .AppendLine(");");
+            }
+            else if (parameter.ForOriginalValue!.Value)
+            {
+                mainBuilder.Append(".AddOriginalValueParameter(")
+                    .Append(code.Literal(parameter.PropertyName!)).Append(", ")
+                    .Append(code.Literal(parameter.Direction))
+                    .AppendLine(");");
+            }
+            else
+            {
+                mainBuilder.Append(".AddParameter(")
+                    .Append(code.Literal(parameter.PropertyName!)).Append(", ")
+                    .Append(code.Literal(parameter.Direction))
+                    .AppendLine(");");
+            }
         }
         
         foreach (var resultColumn in storedProcedure.ResultColumns)
         {
-            mainBuilder.Append(sprocVariable).Append(".AddResultColumn(")
-                .Append(code.Literal(resultColumn))
-                .AppendLine(");");
+            if (resultColumn.ForRowsAffected)
+            {
+                mainBuilder.Append(".AddRowsAffectedResultColumn(")
+                    .Append(code.Literal(resultColumn.Name))
+                    .AppendLine(");");
+            }
+            else
+            {
+                mainBuilder.Append(sprocVariable).Append(".AddResultColumn(")
+                    .Append(code.Literal(resultColumn.PropertyName!))
+                    .AppendLine(");");
+            }
         }
 
         CreateAnnotations(

@@ -879,6 +879,12 @@
   <data name="StoredProcedureOverrideMismatch" xml:space="preserve">
     <value>The property '{propertySpecification}' has specific configuration for the stored procedure '{sproc}', but it isn't mapped to a parameter or a result column on that stored procedure. Remove the specific configuration, or map an entity type that contains this property to '{sproc}'.</value>
   </data>
+  <data name="StoredProcedureParameterInvalidConfiguration" xml:space="preserve">
+    <value>'{facet}' cannot be configured for the parameter '{parameter}' of the stored procedure '{sproc}'.</value>
+  </data>
+  <data name="StoredProcedureParameterInvalidDirection" xml:space="preserve">
+    <value>Unsupported direction '{direction}' was specified for the parameter '{parameter}' of the stored procedure '{sproc}'.</value>
+  </data>
   <data name="StoredProcedureParameterNotFound" xml:space="preserve">
     <value>No property named '{property}' found on the entity type '{entityType}' corresponding to the parameter on the stored procedure '{sproc}'</value>
   </data>

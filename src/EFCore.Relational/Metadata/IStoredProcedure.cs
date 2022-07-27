@@ -24,10 +24,19 @@ public interface IStoredProcedure : IReadOnlyStoredProcedure, IAnnotatable
     IStoreStoredProcedure StoreStoredProcedure { get; }
 
     /// <summary>
+    ///     Gets the parameters for this stored procedure.
+    /// </summary>
+    new IReadOnlyList<IStoredProcedureParameter> Parameters { get; }
+
+    /// <summary>
+    ///     Gets the columns of the result for this stored procedure.
+    /// </summary>
+    new IReadOnlyList<IStoredProcedureResultColumn> ResultColumns { get; }
+
+    /// <summary>
     ///     Returns the store identifier of this stored procedure.
     /// </summary>
     /// <returns>The store identifier.</returns>
     new StoreObjectIdentifier GetStoreIdentifier()
         => ((IReadOnlyStoredProcedure)this).GetStoreIdentifier()!.Value;
-
 }

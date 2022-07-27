@@ -11,8 +11,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 ///     any release. You should only use it directly in your code with extreme caution and knowing that
 ///     doing so can result in application failures when updating to a new Entity Framework Core release.
 /// </summary>
-public class InternalOriginalValuePropertyStoredProcedureParameterBuilder :
-    AnnotatableBuilder<OriginalValuePropertyStoredProcedureParameter, IConventionModelBuilder>,
+public class InternalCurrentValuePropertyStoredProcedureParameterBuilder :
+    AnnotatableBuilder<CurrentValuePropertyStoredProcedureParameter, IConventionModelBuilder>,
     IConventionStoredProcedureParameterBuilder
 {
     /// <summary>
@@ -21,8 +21,8 @@ public class InternalOriginalValuePropertyStoredProcedureParameterBuilder :
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public InternalOriginalValuePropertyStoredProcedureParameterBuilder(
-        OriginalValuePropertyStoredProcedureParameter parameter, IConventionModelBuilder modelBuilder)
+    public InternalCurrentValuePropertyStoredProcedureParameterBuilder(
+        CurrentValuePropertyStoredProcedureParameter parameter, IConventionModelBuilder modelBuilder)
         : base(parameter, modelBuilder)
     {
     }
@@ -33,7 +33,7 @@ public class InternalOriginalValuePropertyStoredProcedureParameterBuilder :
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual InternalOriginalValuePropertyStoredProcedureParameterBuilder? HasName(
+    public virtual InternalCurrentValuePropertyStoredProcedureParameterBuilder? HasName(
         string name,
         ConfigurationSource configurationSource)
     {
@@ -65,7 +65,7 @@ public class InternalOriginalValuePropertyStoredProcedureParameterBuilder :
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual InternalOriginalValuePropertyStoredProcedureParameterBuilder? HasDirection(
+    public virtual InternalCurrentValuePropertyStoredProcedureParameterBuilder? HasDirection(
         ParameterDirection direction,
         ConfigurationSource configurationSource)
     {
