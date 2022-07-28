@@ -252,10 +252,10 @@ public class RelationalModelBuilderTest : ModelBuilderTest
             Assert.Equal("mySchema", insertSproc.Schema);
             Assert.Equal(new[] { "BookId", "Discriminator" }, insertSproc.Parameters);
             Assert.Equal(new[] { "Id" }, insertSproc.ResultColumns);
-            Assert.True(insertSproc.ContainsParameter("Discriminator"));
-            Assert.False(insertSproc.ContainsParameter("Id"));
-            Assert.False(insertSproc.ContainsResultColumn("Discriminator"));
-            Assert.True(insertSproc.ContainsResultColumn("Id"));
+            Assert.True(insertSproc.FindParameter("Discriminator"));
+            Assert.False(insertSproc.FindParameter("Id"));
+            Assert.False(insertSproc.FindResultColumn("Discriminator"));
+            Assert.True(insertSproc.FindResultColumn("Id"));
             Assert.True(insertSproc.AreTransactionsSuppressed);
             Assert.Equal("bar1", insertSproc["foo"]);
             Assert.Same(bookLabel, insertSproc.EntityType);

@@ -14,6 +14,12 @@ public interface IConventionStoredProcedureParameter : IReadOnlyStoredProcedureP
     ///     Gets the stored procedure to which this parameter belongs.
     /// </summary>
     new IConventionStoredProcedure StoredProcedure { get; }
+
+    /// <summary>
+    ///     Gets the builder that can be used to configure this stored procedure parameter.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">If the stored procedure parameter has been removed from the model.</exception>
+    new IConventionStoredProcedureParameterBuilder Builder { get; }
     
     /// <summary>
     ///     Sets the parameter name.

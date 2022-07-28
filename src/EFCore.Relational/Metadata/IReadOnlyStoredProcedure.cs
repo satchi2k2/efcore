@@ -67,11 +67,28 @@ public interface IReadOnlyStoredProcedure : IReadOnlyAnnotatable
     IReadOnlyList<IReadOnlyStoredProcedureParameter> Parameters { get; }
 
     /// <summary>
-    ///    Returns a value indicating whether there is a parameter corresponding to the given property.
+    ///     Returns the parameter corresponding to the given property.
     /// </summary>
     /// <param name="propertyName">The name of a property.</param>
-    /// <returns><see langword="true"/> if a parameter corresponding to the given property is found.</returns>
-    bool ContainsParameter(string propertyName);
+    /// <returns>The parameter corresponding to the given property if found; <see langword="true"/> otherwise.</returns>
+    IReadOnlyStoredProcedureParameter? FindParameter(string propertyName);
+
+    /// <summary>
+    ///     Returns the original value parameter corresponding to the given property.
+    /// </summary>
+    /// <param name="propertyName">The name of a property.</param>
+    /// <returns>
+    ///     The original value parameter corresponding to the given property if found; <see langword="true"/> otherwise.
+    /// </returns>
+    IReadOnlyStoredProcedureParameter? FindOriginalParameter(string propertyName);
+
+    /// <summary>
+    ///     Returns the rows affected parameter.
+    /// </summary>
+    /// <returns>
+    ///     The rows affected parameter if found; <see langword="true"/> otherwise.
+    /// </returns>
+    IReadOnlyStoredProcedureParameter? FindRowsAffectedParameter();
 
     /// <summary>
     ///     Gets the columns of the result for this stored procedure.
@@ -79,11 +96,18 @@ public interface IReadOnlyStoredProcedure : IReadOnlyAnnotatable
     IReadOnlyList<IReadOnlyStoredProcedureResultColumn> ResultColumns { get; }
 
     /// <summary>
-    ///    Returns a value indicating whether there is a column of the result corresponding to the given property.
+    ///    Returns the result column corresponding to the given property.
     /// </summary>
     /// <param name="propertyName">The name of a property.</param>
-    /// <returns><see langword="true"/> if a columns of the result corresponding to the given property is found.</returns>
-    bool ContainsResultColumn(string propertyName);
+    /// <returns>The result column corresponding to the given property if found; <see langword="true"/> otherwise.</returns>
+    IReadOnlyStoredProcedureResultColumn? FindResultColumn(string propertyName);
+
+    /// <summary>
+    ///    Returns the rows affected result column.
+    /// </summary>
+    /// <param name="propertyName">The name of a property.</param>
+    /// <returns>The rows affected result column if found; <see langword="true"/> otherwise.</returns>
+    IReadOnlyStoredProcedureResultColumn? FindRowsAffectedResultColumn(;
 
     /// <summary>
     ///     Returns the name of the stored procedure prepended by the schema

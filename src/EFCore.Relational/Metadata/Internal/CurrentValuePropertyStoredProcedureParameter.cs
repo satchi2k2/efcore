@@ -249,6 +249,13 @@ public class CurrentValuePropertyStoredProcedureParameter :
     }
     
     /// <inheritdoc />
+    IConventionStoredProcedureParameterBuilder IConventionStoredProcedureParameter.Builder
+    {
+        [DebuggerStepThrough]
+        get => Builder;
+    }
+
+    /// <inheritdoc />
     string IConventionStoredProcedureParameter.SetName(string name, bool fromDataAnnotation)
         => SetName(name, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
     

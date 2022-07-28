@@ -12,4 +12,9 @@ public interface IStoredProcedureResultColumn : IReadOnlyStoredProcedureResultCo
     ///     Gets the stored procedure to which this parameter belongs.
     /// </summary>
     new IStoredProcedure StoredProcedure { get; }
+
+    /// <summary>
+    ///     Gets the associated database stored procedure result column.
+    /// </summary>
+    IStoreStoredProcedureResultColumn StoreResultColumn { get; }
 }

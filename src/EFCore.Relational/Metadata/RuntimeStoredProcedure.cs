@@ -13,8 +13,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata;
 /// </summary>
 public class RuntimeStoredProcedure : AnnotatableBase, IRuntimeStoredProcedure
 {
-    private readonly List<string> _parameters = new();
-    private readonly List<string> _resultColumns = new();
+    private readonly List<RuntimeStoredProcedureParameter> _parameters = new();
+    private readonly List<RuntimeStoredProcedureResultColumn> _resultColumns = new();
     private readonly string? _schema;
     private readonly string _name;
     private readonly bool _areTransactionsSuppressed;
@@ -48,19 +48,40 @@ public class RuntimeStoredProcedure : AnnotatableBase, IRuntimeStoredProcedure
     ///     Adds a new parameter mapped to the property with the given name.
     /// </summary>
     /// <param name="propertyName">The name of the corresponding property.</param>
-    public virtual void AddParameter(string propertyName)
+    public virtual RuntimeStoredProcedureParameter AddParameter(string propertyName)
     {
         _parameters.Add(propertyName);
     }
 
     /// <summary>
+    ///     Adds a new parameter that will hold the original value of the property with the given name.
+    /// </summary>
+    /// <param name="propertyName">The name of the corresponding property.</param>
+    /// <returns>The added parameter.</returns>
+    public virtual RuntimeStoredProcedureParameter AddOriginalValueParameter(string propertyName);
+
+    /// <summary>
+    ///     Adds an output parameter that returns the rows affected by this stored procedure.
+    /// </summary>
+    /// <param name="parameterName">The name of the parameter.</param>
+    /// <returns>The added parameter.</returns>
+    public virtual RuntimeStoredProcedureParameter AddRowsAffectedParameter(string parameterName);
+
+    /// <summary>
     ///     Adds a new column of the result for this stored procedure mapped to the property with the given name
     /// </summary>
     /// <param name="propertyName">The name of the corresponding property.</param>
-    public virtual void AddResultColumn(string propertyName)
+    public virtual RuntimeStoredProcedureResultColumn AddResultColumn(string propertyName)
     {
         _resultColumns.Add(propertyName);
     }
+
+    /// <summary>
+    ///     Adds a new column of the result that contains the rows affected by this stored procedure.
+    /// </summary>
+    /// <param name="columnName">The name of the column.</param>
+    /// <returns>The added column.</returns>
+    public virtual RuntimeStoredProcedureResultColumn AddRowsAffectedResultColumn(string columnName);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -126,27 +147,26 @@ public class RuntimeStoredProcedure : AnnotatableBase, IRuntimeStoredProcedure
     }
 
     /// <inheritdoc />
-    IReadOnlyList<string> IReadOnlyStoredProcedure.Parameters
+    IReadOnlyList<IReadOnlyStoredProcedureParameter> IReadOnlyStoredProcedure.Parameters
     {
         [DebuggerStepThrough]
         get => _parameters;
     }
 
     /// <inheritdoc />
-    bool IReadOnlyStoredProcedure.ContainsParameter(string propertyName)
-        => _parameters.Contains(propertyName);
-
-    /// <inheritdoc />
-    IReadOnlyList<string> IReadOnlyStoredProcedure.ResultColumns
+    IReadOnlyList<IReadOnlyStoredProcedureResultColumn> IReadOnlyStoredProcedure.ResultColumns
     {
         [DebuggerStepThrough]
         get => _resultColumns;
     }
 
     /// <inheritdoc />
-    bool IReadOnlyStoredProcedure.ContainsResultColumn(string propertyName)
-        => _resultColumns.Contains(propertyName);
+    bool IReadOnlyStoredProcedure.FindParameter(string propertyName)
+        => _parameters.Contains(propertyName);
 
+    /// <inheritdoc />
+    bool IReadOnlyStoredProcedure.FindResultColumn(string propertyName)
+        => _resultColumns.Contains(propertyName);
     
     /// <inheritdoc />
     IStoreStoredProcedure IStoredProcedure.StoreStoredProcedure

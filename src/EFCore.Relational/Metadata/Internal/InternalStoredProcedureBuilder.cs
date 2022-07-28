@@ -163,10 +163,10 @@ public class InternalStoredProcedureBuilder :
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
-    public virtual InternalStoredProcedureBuilder? HasParameter(
+    public virtual InternalOriginalValuePropertyStoredProcedureParameterBuilder? HasParameter(
         string propertyName, ConfigurationSource configurationSource)
     {
-        if (!Metadata.ContainsParameter(propertyName))
+        if (!Metadata.FindParameter(propertyName))
         {
             if (!configurationSource.Overrides(Metadata.GetConfigurationSource()))
             {
@@ -199,7 +199,7 @@ public class InternalStoredProcedureBuilder :
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual bool CanHaveParameter(string propertyName, ConfigurationSource configurationSource)
-        => Metadata.ContainsParameter(propertyName)
+        => Metadata.FindParameter(propertyName)
             || configurationSource.Overrides(Metadata.GetConfigurationSource());
 
     /// <summary>
@@ -211,7 +211,7 @@ public class InternalStoredProcedureBuilder :
     public virtual InternalStoredProcedureBuilder? HasResultColumn(
         string propertyName, ConfigurationSource configurationSource)
     {
-        if (!Metadata.ContainsResultColumn(propertyName))
+        if (!Metadata.FindResultColumn(propertyName))
         {
             if (!configurationSource.Overrides(Metadata.GetConfigurationSource()))
             {
@@ -244,7 +244,7 @@ public class InternalStoredProcedureBuilder :
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public virtual bool CanHaveResultColumn(string propertyName, ConfigurationSource configurationSource)
-        => Metadata.ContainsResultColumn(propertyName)
+        => Metadata.FindResultColumn(propertyName)
             || configurationSource.Overrides(Metadata.GetConfigurationSource());
 
     /// <summary>

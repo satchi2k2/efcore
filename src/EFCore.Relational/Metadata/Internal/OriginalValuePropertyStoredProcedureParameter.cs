@@ -250,6 +250,13 @@ public class OriginalValuePropertyStoredProcedureParameter :
     }
     
     /// <inheritdoc />
+    IConventionStoredProcedureParameterBuilder IConventionStoredProcedureParameter.Builder
+    {
+        [DebuggerStepThrough]
+        get => Builder;
+    }
+    
+    /// <inheritdoc />
     [DebuggerStepThrough]
     string IConventionStoredProcedureParameter.SetName(string name, bool fromDataAnnotation)
         => SetName(name, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);

@@ -99,6 +99,37 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             Assert.True(model.Model.GetEntityTypes().All(et => !et.GetViewMappings().Any()));
 
             AssertDefaultMappings(model, mapping);
+            AssertTables(model, mapping);
+            AssertSprocs(model, mapping, mappedToTables: true);
+        }
+
+        [ConditionalTheory]
+        [InlineData(Mapping.TPH)]
+        [InlineData(Mapping.TPT)]
+        [InlineData(Mapping.TPC)]
+        public void Can_use_relational_model_with_sprocs_and_views(Mapping mapping)
+        {
+            var model = CreateTestModel(mapToViews: true, mapToSprocs: true, mapping: mapping);
+
+            Assert.Equal(11, model.Model.GetEntityTypes().Count());
+            Assert.Empty(model.Views);
+            Assert.Equal(
+                mapping switch
+                {
+                    Mapping.TPC => 5,
+                    Mapping.TPH => 3,
+                    _ => 6
+                }, model.Views.Count());
+
+            Assert.Equal(mapping switch
+            {
+                Mapping.TPC => 24,
+                Mapping.TPH => 18,
+                _ => 27
+            }, model.StoredProcedures.Count());
+
+            AssertDefaultMappings(model, mapping);
+            AssertViews(model, mapping);
             AssertSprocs(model, mapping);
         }
 
@@ -1019,7 +1050,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             }
         }
 
-        private static void AssertSprocs(IRelationalModel model, Mapping mapping)
+        private static void AssertSprocs(IRelationalModel model, Mapping mapping, bool mappedToTables = false)
         {
             var orderType = model.Model.FindEntityType(typeof(Order));
             var orderInsertMapping = orderType.GetInsertStoredProcedureMappings().Single();

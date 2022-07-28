@@ -43,7 +43,7 @@ public class InternalOriginalValuePropertyStoredProcedureParameterBuilder :
         }
 
         Metadata.SetName(name, configurationSource);
-        
+
         return this;
     }
 
@@ -58,7 +58,7 @@ public class InternalOriginalValuePropertyStoredProcedureParameterBuilder :
         ConfigurationSource configurationSource)
         => configurationSource.Overrides(Metadata.GetNameConfigurationSource())
             || Metadata.Name == name;
-    
+
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
     ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
@@ -75,7 +75,7 @@ public class InternalOriginalValuePropertyStoredProcedureParameterBuilder :
         }
 
         Metadata.SetDirection(direction, configurationSource);
-        
+
         return this;
     }
 
@@ -98,4 +98,25 @@ public class InternalOriginalValuePropertyStoredProcedureParameterBuilder :
         [DebuggerStepThrough]
         get => Metadata;
     }
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IConventionStoredProcedureParameterBuilder? IConventionStoredProcedureParameterBuilder.HasName(string name, bool fromDataAnnotation)
+    => HasName(name, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    bool IConventionStoredProcedureParameterBuilder.CanSetName(string? name, bool fromDataAnnotation)
+    => CanSetName(name, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IConventionStoredProcedureParameterBuilder? IConventionStoredProcedureParameterBuilder.HasDirection(
+        ParameterDirection direction, bool fromDataAnnotation)
+    => HasDirection(direction, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    bool IConventionStoredProcedureParameterBuilder.CanSetDirection(ParameterDirection direction, bool fromDataAnnotation)
+    => CanSetDirection(direction, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 }

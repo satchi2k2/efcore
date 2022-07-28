@@ -12,4 +12,9 @@ public interface IStoredProcedureParameter : IReadOnlyStoredProcedureParameter, 
     ///     Gets the stored procedure to which this parameter belongs.
     /// </summary>
     new IStoredProcedure StoredProcedure { get; }
+
+    /// <summary>
+    ///     Gets the associated database stored procedure parameter.
+    /// </summary>
+    IStoreStoredProcedureParameter StoreParameter { get; }
 }

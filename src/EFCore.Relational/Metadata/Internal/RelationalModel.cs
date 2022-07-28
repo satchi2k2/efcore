@@ -888,6 +888,7 @@ public class RelationalModel : Annotatable, IRelationalModel
 
         var mappingStrategy = entityType.GetMappingStrategy();
         var isTpc = mappingStrategy == RelationalAnnotationNames.TpcMappingStrategy;
+        // TODO: Also add table if available
         while (mappedType != null)
         {
             var insertSproc = (IRuntimeStoredProcedure?)mappedType.GetInsertStoredProcedure();

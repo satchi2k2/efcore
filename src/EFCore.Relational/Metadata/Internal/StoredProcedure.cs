@@ -12,10 +12,10 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal;
 public class StoredProcedure :
     ConventionAnnotatable, IRuntimeStoredProcedure, IMutableStoredProcedure, IConventionStoredProcedure
 {
-    private readonly List<string> _parameters = new();
-    private readonly HashSet<string> _parametersSet = new();
-    private readonly List<string> _resultColumns = new();
-    private readonly HashSet<string> _resultColumnsSet = new();
+    private readonly List<IMutableStoredProcedureParameter> _parameters = new();
+    private readonly Dictionary<string, IMutableStoredProcedureParameter> _propertyParameters = new();
+    private readonly List<IMutableStoredProcedureResultColumn> _resultColumns = new();
+    private readonly Dictionary<string, IMutableStoredProcedureResultColumn> _resultColumnsSet = new();
     private string? _schema;
     private string? _name;
     private InternalStoredProcedureBuilder? _builder;
@@ -457,7 +457,12 @@ public class StoredProcedure :
         return areTransactionsSuppressed;
     }
     
-    /// <inheritdoc />
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public virtual ConfigurationSource? GetAreTransactionsSuppressedConfigurationSource()
         => _areTransactionsSuppressedConfigurationSource;
 
@@ -486,44 +491,74 @@ public class StoredProcedure :
             }
         }
     }
-
-    /// <inheritdoc />
+    
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public virtual IReadOnlyList<string> Parameters
     {
         [DebuggerStepThrough]
         get => _parameters;
     }
-
-    /// <inheritdoc />
-    public virtual bool ContainsParameter(string propertyName)
-        => _parametersSet.Contains(propertyName);
-
-    /// <inheritdoc />
+    
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual bool FindParameter(string propertyName)
+        => _propertyParameters.Contains(propertyName);
+    
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public virtual bool AddParameter(string propertyName)
     {
-        if (!_parametersSet.Contains(propertyName))
+        if (!_propertyParameters.Contains(propertyName))
         {
             _parameters.Add(propertyName);
-            _parametersSet.Add(propertyName);
+            _propertyParameters.Add(propertyName);
 
             return true;
         }
 
         return false;
     }
-
-    /// <inheritdoc />
+    
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public virtual IReadOnlyList<string> ResultColumns
     {
         [DebuggerStepThrough]
         get => _resultColumns;
     }
-
-    /// <inheritdoc />
-    public virtual bool ContainsResultColumn(string propertyName)
+    
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    public virtual bool FindResultColumn(string propertyName)
         => _resultColumnsSet.Contains(propertyName);
-
-    /// <inheritdoc />
+    
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     public virtual bool AddResultColumn(string propertyName)
     {
         if (!_resultColumnsSet.Contains(propertyName))
@@ -604,6 +639,18 @@ public class StoredProcedure :
         set => _storeStoredProcedure = value;
     }
 
+    IReadOnlyList<IConventionStoredProcedureParameter> IConventionStoredProcedure.Parameters => throw new NotImplementedException();
+
+    IReadOnlyList<IConventionStoredProcedureResultColumn> IConventionStoredProcedure.ResultColumns => throw new NotImplementedException();
+
+    IReadOnlyList<IReadOnlyStoredProcedureParameter> IReadOnlyStoredProcedure.Parameters => throw new NotImplementedException();
+
+    IReadOnlyList<IReadOnlyStoredProcedureResultColumn> IReadOnlyStoredProcedure.ResultColumns => throw new NotImplementedException();
+
+    IReadOnlyList<IStoredProcedureParameter> IStoredProcedure.Parameters => throw new NotImplementedException();
+
+    IReadOnlyList<IStoredProcedureResultColumn> IStoredProcedure.ResultColumns => throw new NotImplementedException();
+
     /// <inheritdoc />
     [DebuggerStepThrough]
     string? IConventionStoredProcedure.SetName(string? name, bool fromDataAnnotation)
@@ -616,17 +663,84 @@ public class StoredProcedure :
 
     /// <inheritdoc />
     [DebuggerStepThrough]
-    string? IConventionStoredProcedure.AddParameter(string propertyName, bool fromDataAnnotation)
-        => AddParameter(propertyName) ? propertyName : null;
-
-    /// <inheritdoc />
-    [DebuggerStepThrough]
-    string? IConventionStoredProcedure.AddResultColumn(string propertyName, bool fromDataAnnotation)
-        => AddResultColumn(propertyName) ? propertyName : null;
-
-    /// <inheritdoc />
-    [DebuggerStepThrough]
     bool IConventionStoredProcedure.SetAreTransactionsSuppressed(bool areTransactionsSuppressed, bool fromDataAnnotation)
         => SetAreTransactionsSuppressed(
             areTransactionsSuppressed, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+    
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IConventionStoredProcedureParameter? IConventionStoredProcedure.AddParameter(string propertyName, bool fromDataAnnotation)
+        => AddParameter(propertyName) ? propertyName : null;
+
+    IConventionStoredProcedureParameter? IConventionStoredProcedure.AddOriginalValueParameter(
+        string propertyName, bool fromDataAnnotation)
+    {
+        throw new NotImplementedException();
+    }
+
+    IConventionStoredProcedureParameter? IConventionStoredProcedure.AddRowsAffectedParameter(
+        string parameterName, bool fromDataAnnotation)
+    {
+        throw new NotImplementedException();
+    }
+    
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IConventionStoredProcedureResultColumn? IConventionStoredProcedure.AddResultColumn(string propertyName, bool fromDataAnnotation)
+        => AddResultColumn(propertyName) ? propertyName : null;
+
+    IConventionStoredProcedureResultColumn? IConventionStoredProcedure.AddRowsAffectedResultColumn(string columnName, bool fromDataAnnotation)
+    {
+        throw new NotImplementedException();
+    }
+
+    IStoredProcedureParameter? IStoredProcedure.FindParameter(string propertyName)
+    {
+        throw new NotImplementedException();
+    }
+
+    IStoredProcedureParameter? IStoredProcedure.FindOriginalParameter(string propertyName)
+    {
+        throw new NotImplementedException();
+    }
+
+    IStoredProcedureParameter? IStoredProcedure.FindRowsAffectedParameter()
+    {
+        throw new NotImplementedException();
+    }
+
+    IStoredProcedureResultColumn? IStoredProcedure.FindResultColumn(string propertyName)
+    {
+        throw new NotImplementedException();
+    }
+
+    IStoredProcedureResultColumn? IStoredProcedure.FindRowsAffectedResultColumn()
+    {
+        throw new NotImplementedException();
+    }
+
+    IReadOnlyStoredProcedureParameter? IReadOnlyStoredProcedure.FindParameter(string propertyName)
+    {
+        throw new NotImplementedException();
+    }
+
+    IReadOnlyStoredProcedureParameter? IReadOnlyStoredProcedure.FindOriginalParameter(string propertyName)
+    {
+        throw new NotImplementedException();
+    }
+
+    IReadOnlyStoredProcedureParameter? IReadOnlyStoredProcedure.FindRowsAffectedParameter()
+    {
+        throw new NotImplementedException();
+    }
+
+    IReadOnlyStoredProcedureResultColumn? IReadOnlyStoredProcedure.FindResultColumn(string propertyName)
+    {
+        throw new NotImplementedException();
+    }
+
+    IReadOnlyStoredProcedureResultColumn? IReadOnlyStoredProcedure.FindRowsAffectedResultColumn()
+    {
+        throw new NotImplementedException();
+    }
 }

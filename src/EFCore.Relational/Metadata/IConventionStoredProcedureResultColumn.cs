@@ -12,6 +12,12 @@ public interface IConventionStoredProcedureResultColumn : IReadOnlyStoredProcedu
     ///     Gets the stored procedure to which this result column belongs.
     /// </summary>
     new IConventionStoredProcedure StoredProcedure { get; }
+
+    /// <summary>
+    ///     Gets the builder that can be used to configure this result column.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">If the stored procedure result column has been removed from the model.</exception>
+    new IConventionStoredProcedureResultColumnBuilder Builder { get; }
     
     /// <summary>
     ///     Sets the result column name.

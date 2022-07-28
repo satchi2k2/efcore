@@ -98,4 +98,25 @@ public class InternalCurrentValuePropertyStoredProcedureParameterBuilder :
         [DebuggerStepThrough]
         get => Metadata;
     }
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IConventionStoredProcedureParameterBuilder? IConventionStoredProcedureParameterBuilder.HasName(string name, bool fromDataAnnotation)
+    => HasName(name, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    bool IConventionStoredProcedureParameterBuilder.CanSetName(string? name, bool fromDataAnnotation)
+    => CanSetName(name, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    IConventionStoredProcedureParameterBuilder? IConventionStoredProcedureParameterBuilder.HasDirection(
+        ParameterDirection direction, bool fromDataAnnotation)
+    => HasDirection(direction, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
+
+    /// <inheritdoc />
+    [DebuggerStepThrough]
+    bool IConventionStoredProcedureParameterBuilder.CanSetDirection(ParameterDirection direction, bool fromDataAnnotation)
+    => CanSetDirection(direction, fromDataAnnotation ? ConfigurationSource.DataAnnotation : ConfigurationSource.Convention);
 }
