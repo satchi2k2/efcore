@@ -1,6 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Collections;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Internal;
 
 namespace Microsoft.EntityFrameworkCore.Update;
@@ -277,8 +281,91 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
             }
         }
 
+        var processedJsonNavigations = new List<INavigation>();
+
         foreach (var entry in _entries)
         {
+            if (entry.EntityType.IsMappedToJson())
+            {
+                // for json entry, traverse to the entry for root json entity
+                // and build entire json structure based on it
+                // this will be the column modification command
+                var jsonColumnName = entry.EntityType.JsonColumnName()!;
+                var jsonColumnTypeMapping = entry.EntityType.JsonColumnTypeMapping()!;
+
+                var currentEntry = entry;
+                var currentOwnership = currentEntry.EntityType.FindOwnership()!;
+
+                while (currentEntry.EntityType.IsMappedToJson())
+                {
+                    currentOwnership = currentEntry.EntityType.FindOwnership()!;
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                    currentEntry = ((InternalEntityEntry)currentEntry).StateManager.FindPrincipal((InternalEntityEntry)currentEntry, currentOwnership)!;
+#pragma warning restore EF1001 // Internal EF Core API usage.
+                }
+
+                var navigation = currentOwnership.GetNavigation(pointsToPrincipal: false)!;
+                if (processedJsonNavigations.Contains(navigation))
+                {
+                    continue;
+                }
+
+                processedJsonNavigations.Add(navigation);
+                var navigationValue = currentEntry.GetCurrentValue(navigation)!;
+
+                JsonNode json;
+                if (navigationValue == null)
+                {
+                    json = new JsonObject();
+                }
+                else
+                {
+                    if (navigation.IsCollection)
+                    {
+                        var ordinal = 1;
+                        var jsonNodes = new List<JsonNode>();
+                        foreach (var collectionElement in (IEnumerable)navigationValue)
+                        {
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                            var navigationValueEntry = ((InternalEntityEntry)currentEntry).StateManager.TryGetEntry(collectionElement, currentOwnership.DeclaringEntityType)!;
+#pragma warning restore EF1001 // Internal EF Core API usage.
+
+                            jsonNodes.Add(CreateJsonDocument(navigationValueEntry, currentOwnership.DeclaringEntityType, ordinal++));
+                        }
+
+                        json = new JsonArray(jsonNodes.ToArray());
+                    }
+                    else
+                    {
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                        var navigationValueEntry = ((InternalEntityEntry)currentEntry).StateManager.TryGetEntry(navigationValue, currentOwnership.DeclaringEntityType)!;
+#pragma warning restore EF1001 // Internal EF Core API usage.
+
+                        json = CreateJsonDocument(navigationValueEntry, currentOwnership.DeclaringEntityType, ordinal: null);
+                    }
+                }
+
+                var columnModificationParameters = new ColumnModificationParameters(
+                    jsonColumnName,
+                    originalValue: null,
+                    value: json.ToJsonString(),
+                    property: null,
+                    columnType: jsonColumnTypeMapping.StoreType,
+                    jsonColumnTypeMapping,
+                    read: false,
+                    write: true,
+                    key: false,
+                    condition: false,
+                    _sensitiveLoggingEnabled)
+                {
+                    GenerateParameterName = _generateParameterName,
+                };
+
+                columnModifications.Add(new ColumnModification(columnModificationParameters));
+
+                continue;
+            }
+
             var nonMainEntry = !_mainEntryAdded || entry != _entries[0];
 
             var tableMapping = GetTableMapping(entry.EntityType);
@@ -389,6 +476,75 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
         return columnModifications;
     }
 
+    private bool IsOrdinalKey(IProperty property)
+        => property.IsKey() && property.Name == "Id" && property.IsShadowProperty() && property.ClrType == typeof(int);
+    
+    private JsonNode CreateJsonDocument(IUpdateEntry entry, IEntityType entityType, int? ordinal)
+    {
+        var jsonNode = new JsonObject();
+        foreach (var property in entityType.GetDeclaredProperties())
+        {
+            if (property.IsKey())
+            {
+                if (IsOrdinalKey(property))
+                {
+                    if (ordinal != null)
+                    {
+                        entry.SetStoreGeneratedValue(property, ordinal.Value);
+                    }
+                }
+
+                continue;
+            }
+
+            var jsonElementName = property.JsonElementName();
+
+            var value = entry.GetCurrentProviderValue(property);
+            jsonNode[jsonElementName] = JsonValue.Create(value);
+        }
+
+        foreach (var navigation in entityType.GetDeclaredNavigations())
+        {
+            var jsonElementName = navigation.JsonElementName();
+            var navigationValue = entry.GetCurrentValue(navigation)!;
+            if (navigationValue == null)
+            {
+                jsonNode[jsonElementName] = null;
+                continue;
+            }
+
+            if (navigation.IsCollection)
+            {
+                var jsonNodes = new List<JsonNode>();
+
+                var i = 1;
+                foreach (var navigationElement in (IEnumerable)navigationValue)
+                {
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                    var ownedEntry = ((InternalEntityEntry)entry).StateManager.TryGetEntry(navigationElement, navigation.ForeignKey.DeclaringEntityType)!;
+#pragma warning restore EF1001 // Internal EF Core API usage.
+
+                    var jsonValue = CreateJsonDocument(ownedEntry, navigation.ForeignKey.DeclaringEntityType, i++);
+                    jsonNodes.Add(jsonValue);
+                }
+
+                var jsonArray = new JsonArray(jsonNodes.ToArray());
+                jsonNode[jsonElementName] = jsonArray;
+            }
+            else
+            {
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                var ownedEntry = ((InternalEntityEntry)entry).StateManager.TryGetEntry(navigationValue, navigation.ForeignKey.DeclaringEntityType)!;
+#pragma warning restore EF1001 // Internal EF Core API usage.
+
+                var jsonValue = CreateJsonDocument(ownedEntry, navigation.ForeignKey.DeclaringEntityType, null);
+                jsonNode[jsonElementName] = jsonValue;
+            }
+        }
+
+        return jsonNode;
+    }
+
     private ITableMapping? GetTableMapping(IEntityType entityType)
     {
         ITableMapping? tableMapping = null;
@@ -414,6 +570,11 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
     {
         foreach (var columnMapping in tableMapping.ColumnMappings)
         {
+            if (columnMapping.Property.DeclaringEntityType.IsMappedToJson())
+            {
+                continue;
+            }
+
             var columnName = columnMapping.Column.Name;
             if (!columnMap.TryGetValue(columnName, out var columnPropagator))
             {
